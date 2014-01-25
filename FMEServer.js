@@ -11,13 +11,13 @@
 function FMEServer(svrHost, token, svrPort, isSSL) {
 
         this.svrHost = svrHost;
-        this.svrPort = svrPort || "80";
+        this.svrPort = svrPort || '80';
         this.token = token;
         this.isSSL = isSSL || false;
 
         this.getParams = getParams;
         function getParams(repository, wrkspName){
-                var url = this.svrHost + ":" + this.svrPort + '/fmerest/repositories/' + repository + '/' + wrkspName + '/parameters.json?token=' + this.token;
+                var url = this.svrHost + ':' + this.svrPort + '/fmerest/repositories/' + repository + '/' + wrkspName + '/parameters.json?token=' + this.token;
                 var params = null;
 
                 $.ajax({
@@ -58,7 +58,7 @@ function FMEServer(svrHost, token, svrPort, isSSL) {
          */
         this.getWebSocketConnection = getWebSocketConnection;
         function getWebSocketConnection(stream_id) {
-                var wsConn = new WebSocket("ws://" + svrHost + ":7078/websocket");
+                var wsConn = new WebSocket('ws://' + svrHost + ':7078/websocket');
                 wsConn.onopen = function() {
                         var openMsg = {
                                 ws_op : 'open',
@@ -68,4 +68,70 @@ function FMEServer(svrHost, token, svrPort, isSSL) {
                 };
                 return wsConn;
         }
+
+        /** Retrieves all repositories on the FME Server
+         *
+         *
+         */
+        this.getRepositories = getRepositories;
+        function getRepositories() {
+                var url = this.svrHost + '/repositories.json?token=' + this.token;
+                var repositories = null;
+
+                $.ajax({
+                        url: url,
+                        async: false,
+                        dataType: 'json',
+                        success: function(json){
+                                repositories = json.serviceResponse.repositories.repository;
+                        }
+                });
+
+                return repositories;
+        }
+
+        /** Retrieves all items on the FME Server for a given Repository
+         *
+         *
+         */
+        this.getRepositoryItems = getRepositoryItems;
+        function getRepositoryItems(repository,type) {
+                type = type || null;
+                var url = this.svrHost + '/repositories/' + repository + '.json?token=' + this.token + '&type=' + type;
+                var items = null;
+
+                $.ajax({
+                        url: url,
+                        async: false,
+                        dataType: 'json',
+                        success: function(json){
+                                items = json.serviceResponse.repository.workspaces.workspace;
+                        }
+                });
+
+                return items;
+        }
+
+
+        /** Retrieves all published parameters for a given workspace
+         *
+         *
+         */
+        this.getWorkspaceParameters = getWorkspaceParameters;
+        function getWorkspaceParameters(repository,workspace) {
+                var url = this.svrHost + '/repositories/' + repository + '/' + workspace + '/parameters.json?token=' + this.token;
+                var parameters = null;
+
+                $.ajax({
+                        url: url,
+                        async: false,
+                        dataType: 'json',
+                        success: function(json){
+                                parameters = json.serviceResponse.parameters.parameter;
+                        }
+                });
+
+                return parameters;
+        }
+
 }
