@@ -207,7 +207,7 @@ function disableSchedule(category, workspace, callback) {
     callback = callback || _returnObject;
     var url = this.svrHost + '/fmerest/v2/schedules/' + category + '/' + workspace + '/enabled?token=' + this.token + '&accept=json';
     var parameters = null;
-
+    
     _ajax(url, function(json){
         callback(json);
     }, 'PUT', 'value=false');
@@ -247,6 +247,7 @@ function _ajax(url, whenDone, rtyp, params) {
     var params = params || null;
     var http_request = new XMLHttpRequest();
     http_request.open(req_type, url, true);
+    if (rtyp == 'PUT') http_request.setRequestHeader('Content-type', 'application/x-www-form-urlencoded');
     var my_JSON_object = null;
     http_request.onreadystatechange = function() {
         var done = 4;
