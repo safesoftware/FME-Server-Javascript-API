@@ -52,6 +52,7 @@ function FMEServer(svrHost, token, svrPort, isSSL) {
     this.svrPort = svrPort || '80';
     this.token = token;
     this.isSSL = isSSL || false;
+    this.uriDefaults = '&accept=json&detail=high';
 
 }
 
@@ -120,10 +121,10 @@ function runDataDownload(repository, wrkspName, params, callback){
 FMEServer.prototype.getRepositories = getRepositories;
 function getRepositories(callback) {
     callback = callback || _returnObject;
-    var url = this.svrHost + '/fmerest/repositories.json?token=' + this.token;
-
+    var url = this.svrHost + '/fmerest/v2/repositories?token=' + this.token + this.uriDefaults;
+    
     _ajax(url, function(json){
-        callback(json.serviceResponse.repositories.repository);
+        callback(json);
     });
 }
 
@@ -136,11 +137,12 @@ function getRepositories(callback) {
  */
 FMEServer.prototype.getRepositoryItems = getRepositoryItems;
 function getRepositoryItems(repository, type, callback) {
-    type = type || null;
+    type = type || '';
     callback = callback || _returnObject;
-    var url = this.svrHost + '/fmerest/repositories/' + repository + '.json?token=' + this.token + '&type=' + type;
+    var url = this.svrHost + '/fmerest/v2/repositories/' + repository + '/items?token=' + this.token + '&type=' + type + this.uriDefaults;
+    
     _ajax(url, function(json){
-        callback(json.serviceResponse.repository.workspaces.workspace);
+        callback(json);
     });
 }
 
@@ -154,10 +156,10 @@ function getRepositoryItems(repository, type, callback) {
 FMEServer.prototype.getWorkspaceParameters = getWorkspaceParameters;
 function getWorkspaceParameters(repository, workspace, callback) {
     callback = callback || _returnObject;
-    var url = this.svrHost + '/fmerest/repositories/' + repository + '/' + workspace + '/parameters.json?token=' + this.token;
-
+    var url = this.svrHost + '/fmerest/v2/repositories/' + repository + '/items/' + workspace + '/parameters?token=' + this.token + this.uriDefaults;
+    
     _ajax(url, function(json){
-        callback(json.serviceResponse.parameters.parameter);
+        callback(json);
     });
 }
 
@@ -169,7 +171,7 @@ function getWorkspaceParameters(repository, workspace, callback) {
 FMEServer.prototype.getSchedule = getSchedule;
 function getSchedule(callback) {
     callback = callback || _returnObject;
-    var url = this.svrHost + '/fmerest/v2/schedules?token=' + this.token + '&accept=json&detail=high';
+    var url = this.svrHost + '/fmerest/v2/schedules?token=' + this.token + this.uriDefaults;
     var parameters = null;
 
     _ajax(url, function(json){
@@ -187,7 +189,7 @@ function getSchedule(callback) {
 FMEServer.prototype.enableSchedule = enableSchedule;
 function enableSchedule(category, workspace, callback) {
     callback = callback || _returnObject;
-    var url = this.svrHost + '/fmerest/v2/schedules/' + category + '/' + workspace + '/enabled?token=' + this.token + '&accept=json';
+    var url = this.svrHost + '/fmerest/v2/schedules/' + category + '/' + workspace + '/enabled?token=' + this.token + this.uriDefaults;
     var parameters = null;
 
     _ajax(url, function(json){
@@ -205,7 +207,7 @@ function enableSchedule(category, workspace, callback) {
 FMEServer.prototype.disableSchedule = disableSchedule;
 function disableSchedule(category, workspace, callback) {
     callback = callback || _returnObject;
-    var url = this.svrHost + '/fmerest/v2/schedules/' + category + '/' + workspace + '/enabled?token=' + this.token + '&accept=json';
+    var url = this.svrHost + '/fmerest/v2/schedules/' + category + '/' + workspace + '/enabled?token=' + this.token + this.uriDefaults;
     var parameters = null;
     
     _ajax(url, function(json){
