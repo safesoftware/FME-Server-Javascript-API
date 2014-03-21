@@ -66,7 +66,7 @@ function FMEServer(svrHost, token, svrPort, isSSL) {
  */
 FMEServer.prototype.getSessionID = getSessionID;
 function getSessionID(repository, wrkspName, callback){
-    callback = callback || _returnObject;
+    var callback = callback || _returnObject;
     var url = 'http://'+this.svrHost + '/fmedataupload/' + repository + '/' + wrkspName + '?opt_extractarchive=false&opt_pathlevel=3&opt_fullpath=true';
     
     _ajax(url, function(json) {
@@ -89,7 +89,7 @@ function getWebSocketConnection(stream_id) {
             ws_op : 'open',
             ws_stream_id : stream_id
         }
-    wsConn.send(JSON.stringify(openMsg));
+        wsConn.send(JSON.stringify(openMsg));
     };
     return wsConn;
 }
@@ -105,7 +105,7 @@ function getWebSocketConnection(stream_id) {
  */
 FMEServer.prototype.runDataDownload = runDataDownload;
 function runDataDownload(repository, wrkspName, params, callback){
-    callback = callback || _returnObject;
+    var callback = callback || _returnObject;
     var url = 'http://' + this.svrHost + '/fmedatadownload/' + repository + '/' + wrkspName + '.fmw?' + params;
 
     _ajax(url, function(json){
@@ -120,7 +120,7 @@ function runDataDownload(repository, wrkspName, params, callback){
  */
 FMEServer.prototype.getRepositories = getRepositories;
 function getRepositories(callback) {
-    callback = callback || _returnObject;
+    var callback = callback || _returnObject;
     var url = this.svrHost + '/fmerest/v2/repositories?token=' + this.token + this.uriDefaults;
     
     _ajax(url, function(json){
@@ -138,7 +138,7 @@ function getRepositories(callback) {
 FMEServer.prototype.getRepositoryItems = getRepositoryItems;
 function getRepositoryItems(repository, type, callback) {
     type = type || '';
-    callback = callback || _returnObject;
+    var callback = callback || _returnObject;
     var url = this.svrHost + '/fmerest/v2/repositories/' + repository + '/items?token=' + this.token + '&type=' + type + this.uriDefaults;
     
     _ajax(url, function(json){
@@ -155,7 +155,7 @@ function getRepositoryItems(repository, type, callback) {
  */
 FMEServer.prototype.getWorkspaceParameters = getWorkspaceParameters;
 function getWorkspaceParameters(repository, workspace, callback) {
-    callback = callback || _returnObject;
+    var callback = callback || _returnObject;
     var url = this.svrHost + '/fmerest/v2/repositories/' + repository + '/items/' + workspace + '/parameters?token=' + this.token + this.uriDefaults;
     
     _ajax(url, function(json){
@@ -170,9 +170,8 @@ function getWorkspaceParameters(repository, workspace, callback) {
  */
 FMEServer.prototype.getSchedule = getSchedule;
 function getSchedule(callback) {
-    callback = callback || _returnObject;
+    var callback = callback || _returnObject;
     var url = this.svrHost + '/fmerest/v2/schedules?token=' + this.token + this.uriDefaults;
-    var parameters = null;
 
     _ajax(url, function(json){
         callback(json);
@@ -188,13 +187,13 @@ function getSchedule(callback) {
  */
 FMEServer.prototype.enableSchedule = enableSchedule;
 function enableSchedule(category, workspace, callback) {
-    callback = callback || _returnObject;
+    var callback = callback || _returnObject;
     var url = this.svrHost + '/fmerest/v2/schedules/' + category + '/' + workspace + '/enabled?token=' + this.token + this.uriDefaults;
-    var parameters = null;
+    var parameters = 'value=true';
 
     _ajax(url, function(json){
         callback(json);
-    }, 'PUT', 'value=true');
+    }, 'PUT', parameters);
 }
 
 
@@ -206,13 +205,131 @@ function enableSchedule(category, workspace, callback) {
  */
 FMEServer.prototype.disableSchedule = disableSchedule;
 function disableSchedule(category, workspace, callback) {
-    callback = callback || _returnObject;
+    var callback = callback || _returnObject;
     var url = this.svrHost + '/fmerest/v2/schedules/' + category + '/' + workspace + '/enabled?token=' + this.token + this.uriDefaults;
-    var parameters = null;
+    var parameters = 'value=false';
     
     _ajax(url, function(json){
         callback(json);
-    }, 'PUT', 'value=false');
+    }, 'PUT', parameters);
+}
+
+
+/**
+ * Replaces a scheduled item
+ * @param {String} category Schedule category title
+ * @param {String} workspace Scheduled workspace name
+ * @param {Object} json Object holding the schedule information
+ * @param {Function} callback Callback function accepting the json return value
+ */
+FMEServer.prototype.replaceSchedule = replaceSchedule;
+function replaceSchedule(category, workspace, schedule, callback) {
+    var callback = callback || _returnObject;
+    var url = this.svrHost + '/fmerest/v2/schedules/' + category + '/' + workspace + '?token=' + this.token + this.uriDefaults;
+    var parameters = schedule;
+    
+    _ajax(url, function(json){
+        callback(json);
+    }, 'PUT', parameters);
+}
+
+/**
+ * Remove a scheduled item
+ * @param {String} category Schedule category title
+ * @param {String} workspace Scheduled workspace name
+ * @param {Function} callback Callback function accepting the json return value
+ */
+FMEServer.prototype.removeSchedule = removeSchedule;
+function removeSchedule(category, workspace, callback) {
+    var callback = callback || _returnObject;
+    var url = this.svrHost + '/fmerest/v2/schedules/' + category + '/' + workspace + '?token=' + this.token + this.uriDefaults;
+    
+    _ajax(url, function(json){
+        callback(json);
+    }, 'DELETE');
+}
+
+
+/**
+ * Create a scheduled item
+ * @param {Object} json Object holding the schedule information
+ * @param {Function} callback Callback function accepting the json return value
+ */
+FMEServer.prototype.createSchedule = createSchedule;
+function createSchedule(schedule, callback) {
+    var callback = callback || _returnObject;
+    var url = this.svrHost + '/fmerest/v2/schedules?token=' + this.token + this.uriDefaults;
+    var parameters = schedule;
+    
+    _ajax(url, function(json){
+        callback(json);
+    }, 'POST', parameters);
+}
+
+
+/**
+ * Create a publication
+ * @param {Object} json Object holding the publication information
+ * @param {Function} callback Callback function accepting the json return value
+ */
+FMEServer.prototype.createPublication = createPublication;
+function createPublication(publication, callback) {
+    var callback = callback || _returnObject;
+    var url = this.svrHost + '/fmerest/v2/notifications/publications?token=' + this.token + this.uriDefaults;
+    var parameters = publication;
+    
+    _ajax(url, function(json){
+        callback(json);
+    }, 'POST', publication);
+}
+
+
+/**
+ * Create a subscription
+ * @param {Object} json Object holding the subscription information
+ * @param {Function} callback Callback function accepting the json return value
+ */
+FMEServer.prototype.createSubscription = createSubscription;
+function createSubscription(subscription, callback) {
+    var callback = callback || _returnObject;
+    var url = this.svrHost + '/fmerest/v2/notifications/publications?token=' + this.token + this.uriDefaults;
+    var parameters = subscription;
+    
+    _ajax(url, function(json){
+        callback(json);
+    }, 'POST', publication);
+}
+
+
+/**
+ * Lookup user token
+ * @param {Function} callback Callback function accepting the json return value
+ */
+FMEServer.prototype.lookupToken = lookupToken;
+function lookupToken(user, password, callback) {
+    var callback = callback || _returnObject;
+    var url = this.svrHost + '/fmetoken/service/view.json';
+    var parameters = 'user='+user+'&password='+password;
+    
+    _ajax(url, function(json){
+        callback(json);
+    }, 'POST', parameters);
+}
+
+
+/**
+ * Generate guest token
+ * @param {Function} callback Callback function accepting the json return value
+ */
+FMEServer.prototype.generateToken = generateToken;
+function generateToken(user, password, count, unit, callback) {
+    var callback = callback || _returnObject;
+    var url = this.svrHost + '/fmetoken/service/generate';
+    var parameters = 'user='+user+'&password='+password+'&expiration='+count+'&timeunit='+unit;
+    
+    _ajax(url, function(json){
+        callback(json);
+    }, 'POST', parameters);
 }
 
 
@@ -222,7 +339,7 @@ function disableSchedule(category, workspace, callback) {
  */
 FMEServer.prototype.getToken = getToken;
 function getToken(callback) {
-    callback = callback || _returnObject;
+    var callback = callback || _returnObject;
     callback(this.token);
 }
 
@@ -249,15 +366,20 @@ function _ajax(url, whenDone, rtyp, params) {
     var params = params || null;
     var http_request = new XMLHttpRequest();
     http_request.open(req_type, url, true);
-    if (rtyp == 'PUT') http_request.setRequestHeader('Content-type', 'application/x-www-form-urlencoded');
+    if (req_type == 'PUT' || req_type == 'POST') http_request.setRequestHeader('Content-type', 'application/x-www-form-urlencoded');
     var my_JSON_object = null;
     http_request.onreadystatechange = function() {
         var done = 4;
         var ok = 200;
         
         if (http_request.readyState == done && http_request.status == ok) {
-            my_JSON_object = JSON.parse(http_request.responseText);
-            whenDone(my_JSON_object);
+            var response = http_request.responseText;
+            if (response.contains('{')) {
+                my_JSON_object = JSON.parse(response);
+                whenDone(my_JSON_object);
+            } else {
+                whenDone(response);
+            }
         }
     };
     http_request.send(params);
