@@ -52,7 +52,8 @@ function FMEServer(svrHost, token, svrPort, isSSL) {
     this.svrPort = svrPort || '80';
     this.token = token;
     this.isSSL = isSSL || false;
-    this.uriDefaults = '&accept=json&detail=high';
+    this.defaults = '&accept=json&detail=high';
+    this.dataDownloadDefaults = "&opt_responseformat=json&opt_showresult=true";
 
 }
 
@@ -99,18 +100,18 @@ function getWebSocketConnection(stream_id) {
  * Runs a workspace using the Data Download service and returns the 
  * path to download the results in the Json results object
  * @param {String} repository The repository on the FME Server
- * @param {String} wrkspName The name of the workspace on FME Server, i.e. workspace.fmw
- * @param {String} params Any workspace-specific parameter values as a string of this form: &<paramName>=<value>&<paramName2>=<value2>
+ * @param {String} workspace The name of the workspace on FME Server, i.e. workspace.fmw
+ * @param {String} parameters Any workspace-specific parameter values as a string of this form: name1=value1&name2=value2 etc...
  * @param {Function} callback Callback function accepting the json return value
  */
 FMEServer.prototype.runDataDownload = runDataDownload;
-function runDataDownload(repository, wrkspName, params, callback){
+function runDataDownload(repository, workspace, parameters, callback){
     var callback = callback || _returnObject;
-    var url = 'http://' + this.svrHost + '/fmedatadownload/' + repository + '/' + wrkspName + '.fmw?' + params;
+    var url = this.svrHost + '/fmedatadownload/' + repository + '/' + workspace;
 
     _ajax(url, function(json){
         callback(json);
-    });
+    }, 'POST', parameters+this.dataDownloadDefaults);
 }
 
 
@@ -121,7 +122,7 @@ function runDataDownload(repository, wrkspName, params, callback){
 FMEServer.prototype.getRepositories = getRepositories;
 function getRepositories(callback) {
     var callback = callback || _returnObject;
-    var url = this.svrHost + '/fmerest/v2/repositories?token=' + this.token + this.uriDefaults;
+    var url = this.svrHost + '/fmerest/v2/repositories?token=' + this.token + this.defaults;
     
     _ajax(url, function(json){
         callback(json);
@@ -139,7 +140,7 @@ FMEServer.prototype.getRepositoryItems = getRepositoryItems;
 function getRepositoryItems(repository, type, callback) {
     type = type || '';
     var callback = callback || _returnObject;
-    var url = this.svrHost + '/fmerest/v2/repositories/' + repository + '/items?token=' + this.token + '&type=' + type + this.uriDefaults;
+    var url = this.svrHost + '/fmerest/v2/repositories/' + repository + '/items?token=' + this.token + '&type=' + type + this.defaults;
     
     _ajax(url, function(json){
         callback(json);
@@ -156,7 +157,7 @@ function getRepositoryItems(repository, type, callback) {
 FMEServer.prototype.getWorkspaceParameters = getWorkspaceParameters;
 function getWorkspaceParameters(repository, workspace, callback) {
     var callback = callback || _returnObject;
-    var url = this.svrHost + '/fmerest/v2/repositories/' + repository + '/items/' + workspace + '/parameters?token=' + this.token + this.uriDefaults;
+    var url = this.svrHost + '/fmerest/v2/repositories/' + repository + '/items/' + workspace + '/parameters?token=' + this.token + this.defaults;
     
     _ajax(url, function(json){
         callback(json);
@@ -171,7 +172,7 @@ function getWorkspaceParameters(repository, workspace, callback) {
 FMEServer.prototype.getSchedule = getSchedule;
 function getSchedule(callback) {
     var callback = callback || _returnObject;
-    var url = this.svrHost + '/fmerest/v2/schedules?token=' + this.token + this.uriDefaults;
+    var url = this.svrHost + '/fmerest/v2/schedules?token=' + this.token + this.defaults;
 
     _ajax(url, function(json){
         callback(json);
@@ -188,7 +189,7 @@ function getSchedule(callback) {
 FMEServer.prototype.enableSchedule = enableSchedule;
 function enableSchedule(category, workspace, callback) {
     var callback = callback || _returnObject;
-    var url = this.svrHost + '/fmerest/v2/schedules/' + category + '/' + workspace + '/enabled?token=' + this.token + this.uriDefaults;
+    var url = this.svrHost + '/fmerest/v2/schedules/' + category + '/' + workspace + '/enabled?token=' + this.token + this.defaults;
     var parameters = 'value=true';
 
     _ajax(url, function(json){
@@ -206,7 +207,7 @@ function enableSchedule(category, workspace, callback) {
 FMEServer.prototype.disableSchedule = disableSchedule;
 function disableSchedule(category, workspace, callback) {
     var callback = callback || _returnObject;
-    var url = this.svrHost + '/fmerest/v2/schedules/' + category + '/' + workspace + '/enabled?token=' + this.token + this.uriDefaults;
+    var url = this.svrHost + '/fmerest/v2/schedules/' + category + '/' + workspace + '/enabled?token=' + this.token + this.defaults;
     var parameters = 'value=false';
     
     _ajax(url, function(json){
@@ -225,7 +226,7 @@ function disableSchedule(category, workspace, callback) {
 FMEServer.prototype.replaceSchedule = replaceSchedule;
 function replaceSchedule(category, workspace, schedule, callback) {
     var callback = callback || _returnObject;
-    var url = this.svrHost + '/fmerest/v2/schedules/' + category + '/' + workspace + '?token=' + this.token + this.uriDefaults;
+    var url = this.svrHost + '/fmerest/v2/schedules/' + category + '/' + workspace + '?token=' + this.token + this.defaults;
     var parameters = schedule;
     
     _ajax(url, function(json){
@@ -242,7 +243,7 @@ function replaceSchedule(category, workspace, schedule, callback) {
 FMEServer.prototype.removeSchedule = removeSchedule;
 function removeSchedule(category, workspace, callback) {
     var callback = callback || _returnObject;
-    var url = this.svrHost + '/fmerest/v2/schedules/' + category + '/' + workspace + '?token=' + this.token + this.uriDefaults;
+    var url = this.svrHost + '/fmerest/v2/schedules/' + category + '/' + workspace + '?token=' + this.token + this.defaults;
     
     _ajax(url, function(json){
         callback(json);
@@ -258,7 +259,7 @@ function removeSchedule(category, workspace, callback) {
 FMEServer.prototype.createSchedule = createSchedule;
 function createSchedule(schedule, callback) {
     var callback = callback || _returnObject;
-    var url = this.svrHost + '/fmerest/v2/schedules?token=' + this.token + this.uriDefaults;
+    var url = this.svrHost + '/fmerest/v2/schedules?token=' + this.token + this.defaults;
     var parameters = schedule;
     
     _ajax(url, function(json){
@@ -275,7 +276,7 @@ function createSchedule(schedule, callback) {
 FMEServer.prototype.createPublication = createPublication;
 function createPublication(publication, callback) {
     var callback = callback || _returnObject;
-    var url = this.svrHost + '/fmerest/v2/notifications/publications?token=' + this.token + this.uriDefaults;
+    var url = this.svrHost + '/fmerest/v2/notifications/publications?token=' + this.token + this.defaults;
     var parameters = publication;
     
     _ajax(url, function(json){
@@ -292,7 +293,7 @@ function createPublication(publication, callback) {
 FMEServer.prototype.createSubscription = createSubscription;
 function createSubscription(subscription, callback) {
     var callback = callback || _returnObject;
-    var url = this.svrHost + '/fmerest/v2/notifications/publications?token=' + this.token + this.uriDefaults;
+    var url = this.svrHost + '/fmerest/v2/notifications/publications?token=' + this.token + this.defaults;
     var parameters = subscription;
     
     _ajax(url, function(json){
@@ -334,17 +335,76 @@ function generateToken(user, password, count, unit, callback) {
 
 
 /**
- * Retrieves the object token
+ * Submit a Job to Run asynchronously
+ * @param {String} repository The repository on the FME Server
+ * @param {String} workspace The name of the workspace on FME Server, i.e. workspace.fmw
+ * @param {String} parameters Any workspace-specific parameter values as a string of this form: name1=value1&name2=value2 etc...
  * @param {Function} callback Callback function accepting the json return value
  */
-FMEServer.prototype.getToken = getToken;
-function getToken(callback) {
+FMEServer.prototype.submitJob = submitJob;
+function submitJob(repository, workspace, parameters, callback) {
     var callback = callback || _returnObject;
-    callback(this.token);
+    var url = this.svrHost + '/fmerest/v2/transformations/commands/submit/' + repository + '/' + workspace + '?token=' + this.token + this.defaults;
+    parameters = this._stringToParamObj(parameters, 'publishedParameters');
+    _ajax(url, function(json){
+        callback(json);
+    }, 'POST', JSON.stringify(parameters));
 }
 
+
 /**
- * Private return helper method.
+ * Submit a Job to Run Synchronously
+ * @param {String} repository The repository on the FME Server
+ * @param {String} workspace The name of the workspace on FME Server, i.e. workspace.fmw
+ * @param {String} parameters Any workspace-specific parameter values as a string of this form: name1=value1&name2=value2 etc...
+ * @param {Function} callback Callback function accepting the json return value
+ */
+FMEServer.prototype.submitSyncJob = submitSyncJob;
+function submitSyncJob(repository, workspace, parameters, callback) {
+    var callback = callback || _returnObject;
+    var url = this.svrHost + '/fmerest/v2/transformations/commands/transact/' + repository + '/' + workspace + '?token=' + this.token + this.defaults;
+    parameters = this._stringToParamObj(parameters, 'publishedParameters');
+    _ajax(url, function(json){
+        callback(json);
+    }, 'POST', JSON.stringify(parameters));
+}
+
+
+/**
+ * Convert value pair string to parameters JSON object helper method.
+ * @param {String} str Name,Value string concatenated with & ex: name=value&name2=value&name=value3 etc.
+ * @param {String} paramName reference to the object identifier name ex: publishedParameters
+ */
+FMEServer.prototype._stringToParamObj = _stringToParamObj;
+function _stringToParamObj(str, paramName) {
+    var parameters = str.split(/&/g);
+    var params = {};
+    params[paramName] = [];
+    paramList = [];
+    for(param in parameters) {
+        var parts = parameters[param].split('=');
+        if(paramList.indexOf(parts[0]) != -1) {
+            for(var i = 0; i < params[paramName].length; i++) {
+                if(params[paramName][i].name == parts[0] && !(params[paramName][i].value instanceof Array)) {
+                    var item = params[paramName][i].value;
+                    params[paramName][i].value = [];
+                    params[paramName][i].value.push(item);
+                    params[paramName][i].value.push(parts[1]);
+                } else if(params[paramName][i].name == parts[0]) {
+                    params[paramName][i].value.push(parts[1]);
+                }
+            }
+        } else {
+            params[paramName].push( { "name" : parts[0], "value" : parts[1] } );
+            paramList.push(parts[0]);
+        }
+    }
+    return params;
+}
+
+
+/**
+ * Return helper method.
  * @param {Object} object to return
  */
 FMEServer.prototype._returnObject = _returnObject;
@@ -367,14 +427,16 @@ function _ajax(url, whenDone, rtyp, params) {
     var http_request = new XMLHttpRequest();
     http_request.open(req_type, url, true);
     if (req_type == 'PUT' || req_type == 'POST') http_request.setRequestHeader('Content-type', 'application/x-www-form-urlencoded');
+    if (params != null && params.indexOf('{') != -1) http_request.setRequestHeader('Content-type', 'application/json;charset=UTF-8');
     var my_JSON_object = null;
     http_request.onreadystatechange = function() {
         var done = 4;
         var ok = 200;
+        var accepted = 202;
         
-        if (http_request.readyState == done && http_request.status == ok) {
+        if (http_request.readyState == done && (http_request.status == ok || http_request.status == accepted)) {
             var response = http_request.responseText;
-            if (response.contains('{')) {
+            if (response.indexOf('{') != -1) {
                 my_JSON_object = JSON.parse(response);
                 whenDone(my_JSON_object);
             } else {
