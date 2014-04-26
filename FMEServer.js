@@ -43,30 +43,30 @@ var FMEServer = ( function() {
 
     /**
      * @constructor FME Server connection object
-     * @param {String} svrHost Host name only, not URL
+     * @param {String} svr Server URL
      * @param {String} token Obtained from http://yourfmeserver/fmetoken
      * @param {String} format Output format desired, json (default), xml, or html
      * @param {String} detail - high (default) or low
-     * @param {Number} svrPort Port, default is 80 - string
-     * @param {Boolean} isSSL Connect to the server via HTTPS
+     * @param {Number} port Port, default is 80 - string
+     * @param {Boolean} ssl Connect to the server via HTTPS
      */
-    var fme = function(svrHost, token, format, detail, svrPort, isSSL) {
+    var fme = function(svr, token, format, detail, port, ssl) {
 
-        if (svrHost.indexOf('http://') === -1) {
-            svrHost = 'http://' + svrHost;
+        if (svr.indexOf('http://') === -1) {
+            svr = 'http://' + svr;
         }
 
-        if (isSSL) {
-            svrHost = svrHost.replace('http://','https://');
+        if (ssl) {
+            svr = svr.replace('http://','https://');
         }
 
-        var settings = {
-            server : svrHost,
+        var config = {
+            server : svr,
             token : token,
             accept : format || 'json',
             detail :  detail || 'high',
-            port : svrPort || '80',
-            ssl : isSSL || false,
+            port : port || '80',
+            ssl : ssl || false,
             version : 'v2'
         };
 
@@ -75,66 +75,72 @@ var FMEServer = ( function() {
          * @param {String} name of setting
          * @return {String} individual parameter, or {Object} settings
          */
-        this._getSettings = function(param) {
-            var parameter = param || null;
-            if (parameter) {
-                return settings[parameter];
+        this._config = function(param) {
+            param = param || null;
+            if (param) {
+                return config[param];
             }
-            return settings;
-        }
+            return config;
+        };
 
         /**
          * Return Object Method.
          * @param {Object} object to return
          * @return {Object} the object
          */
-        this._returnObject = function(obj) {
+        this._returnObj = function(obj) {
             return obj;
-        }
+        };
 
         /**
          * AJAX Method
          * @param {String} url The request URL
-         * @param {Function} whenDone Callback function accepting JSON response thisect
+         * @param {Function} callback Callback function accepting json response
          * @param {String} rtyp Type of request ex: PUT, GET(Default)
-         * @param {String} Param -> Value pair string of items or JSON
+         * @param {String} Param -> Value pair string of items or json
          */
-        this._ajax = function(url, whenDone, rtyp, params) {
-            var req_type = rtyp || 'GET';
-            var params = params || null;
-            var http_request = new XMLHttpRequest();
+        this._ajax = function(url, callback, rtyp, params) {
+            rtyp = rtyp || 'GET';
+            params = params || null;
+            var req = new XMLHttpRequest();
             
             if (url.indexOf('?') != -1) {
-                url += '&detail=' + this._getSettings('detail') + '&token=' + this._getSettings('token');
+                url += '&detail=' + this._config('detail') + '&token=' + this._config('token');
             } else {
-                url += '?detail=' + this._getSettings('detail') + '&token=' + this._getSettings('token');
+                url += '?detail=' + this._config('detail') + '&token=' + this._config('token');
             }
 
-            http_request.open(req_type, url, true);
-            http_request.setRequestHeader('Accept', this._getSettings('accept'));
+            req.open(rtyp, url, true);
+            req.setRequestHeader('Accept', this._config('accept'));
 
-            if ((req_type == 'PUT' || req_type == 'POST') && params.indexOf('{')) {
-                http_request.setRequestHeader('Content-type', 'application/x-www-form-urlencoded');
+            if ((rtyp == 'PUT' || rtyp == 'POST') && params.indexOf('{')) {
+                req.setRequestHeader('Content-type', 'application/x-www-form-urlencoded');
             }
             if (params !== null && params.indexOf('{') != -1) {
-                http_request.setRequestHeader('Content-type', 'application/json');
+                req.setRequestHeader('Content-type', 'application/json');
             }
 
-            http_request.onreadystatechange = function() {
+            req.onreadystatechange = function() {
                 var done = 4;
                 
-                if (http_request.readyState == done) {
-                    var response = http_request.responseText;
-                    if (response.indexOf('{') != -1) {
-                        response = JSON.parse(response);
-                    } else if (response.length === 0 && http_request.status == 204) {
-                        response = { 'delete' : true };
+                if (req.readyState == done) {
+                    var resp = req.responseText;
+                    if (resp.indexOf('{') != -1) {
+                        resp = JSON.parse(resp);
+                    } else if (resp.length === 0 && req.status == 204) {
+                        resp = { 'delete' : true };
                     }
-                    whenDone(response);
+                    callback(resp);
                 }
             };
-            http_request.send(params);
-        }
+            req.send(params);
+        };
+		
+		this._URL = function(url) {
+			url = url.replace(/{{svr}}/g, this._config('server'));
+			url = url.replace(/{{ver}}/g, this._config('version'));
+			return url;
+		};
 
         _init();
     };
@@ -148,63 +154,62 @@ var FMEServer = ( function() {
      * @param {Function} callback Callback function accepting sessionID as a string
      */
     function getSessionID(repository, workspace, callback){
-        var callback = callback || this._returnObject;
-        var url = this._getSettings('server') + '/fmedataupload/' + repository + '/' + workspace;
-        var parameters = 'opt_extractarchive=false&opt_pathlevel=3&opt_fullpath=true';
+        callback = callback || this._returnObj;
+        var url = this._URL('{{svr}}/fmedataupload/' + repository + '/' + workspace);
+        var params = 'opt_extractarchive=false&opt_pathlevel=3&opt_fullpath=true';
 
         this._ajax(url, function(json) {
             callback(json.serviceResponse.session);
-        }, parameters);
+        }, params);
     }
 
 
     /**
-     * Returns a WebSocket connection thisect to the specified server
+     * Returns a WebSocket connection to the specified server
      * @param {String} stream_id A name for the desired WebSocket stream id
-     * @return {WebSocket} A WebSocket connection thisect
+     * @return {WebSocket} A WebSocket connection
      * @param {Function} callback Callback function to run after connection is opened (optional)
      */
     function getWebSocketConnection(stream_id, callback) {
-        var callback = callback || null;
+        callback = callback || null;
         var url;
 
-        if (this._getSettings('server').indexOf('https://') != -1) {
+        if (this._config('server').indexOf('https://') != -1) {
             url = url.replace('https://','');
         } else {
-            url = this._getSettings('server').replace('http://','');
+            url = this._config('server').replace('http://','');
         }
         
-        var wsConn = new WebSocket('ws://' + url + ':7078/websocket');
-        wsConn.onopen = function() {
+        var ws = new WebSocket('ws://' + url + ':7078/websocket');
+        ws.onopen = function() {
             var openMsg = {
                 ws_op : 'open',
                 ws_stream_id : stream_id
             };
-            wsConn.send(JSON.stringify(openMsg));
+            ws.send(JSON.stringify(openMsg));
             if (callback !== null){
                 callback();
-            };
+            }
         };
-        return wsConn;
+        return ws;
     }
 
 
     /**
-     * Runs a workspace using the Data Download service and returns the 
-     * path to download the results in the Json results thisect
+     * Runs a workspace using the Data Download service and returns json
      * @param {String} repository The repository on the FME Server
      * @param {String} workspace The name of the workspace on FME Server, i.e. workspace.fmw
-     * @param {String} parameters Any workspace-specific parameter values
+     * @param {String} params Any workspace-specific parameter values
      * @param {Function} callback Callback function accepting the json return value
      */
-    function runDataDownload(repository, workspace, parameters, callback){
-        var callback = callback || this._returnObject;
-        var url = this._getSettings('server') + '/fmedatadownload/' + repository + '/' + workspace;
-        parameters = 'opt_responseformat=' + this._getSettings('accept') + '&opt_showresult=true&' + parameters;
+    function runDataDownload(repository, workspace, params, callback){
+        callback = callback || this._returnObj;
+        var url = this._URL('{{svr}}/fmedatadownload/' + repository + '/' + workspace);
+        params = 'opt_responseformat=' + this._config('accept') + '&opt_showresult=true&' + params;
 
         this._ajax(url, function(json){
             callback(json);
-        }, 'POST', parameters);
+        }, 'POST', params);
     }
 
 
@@ -213,8 +218,8 @@ var FMEServer = ( function() {
      * @param {Function} callback Callback function accepting the json return value
      */
     function getRepositories(callback) {
-        var callback = callback || this._returnObject;
-        var url = this._getSettings('server') + '/fmerest/' + this._getSettings('version') + '/repositories';
+        callback = callback || this._returnObj;
+        var url = this._URL('{{svr}}/fmerest/{{ver}}/repositories');
         
         this._ajax(url, function(json){
             callback(json);
@@ -230,8 +235,8 @@ var FMEServer = ( function() {
      */
     function getRepositoryItems(repository, type, callback) {
         type = type || '';
-        var callback = callback || this._returnObject;
-        var url = this._getSettings('server') + '/fmerest/' + this._getSettings('version') + '/repositories/' + repository + '/items?type=' + type;
+        callback = callback || this._returnObj;
+        var url = this._URL('{{svr}}/fmerest/{{ver}}/repositories/' + repository + '/items?type=' + type);
         
         this._ajax(url, function(json){
             callback(json);
@@ -240,14 +245,14 @@ var FMEServer = ( function() {
 
 
     /**
-     * Retrieves all published parameters for a given workspace
+     * Retrieves all published params for a given workspace
      * @param {String} repository The repository on the FME Server
      * @param {String} workspace The name of the workspace on FME Server, i.e. workspace.fmw
      * @param {Function} callback Callback function accepting the json return value
      */
     function getWorkspaceParameters(repository, workspace, callback) {
-        var callback = callback || this._returnObject;
-        var url = this._getSettings('server') + '/fmerest/' + this._getSettings('version') + '/repositories/' + repository + '/items/' + workspace + '/parameters';
+        callback = callback || this._returnObj;
+        var url = this._URL('{{svr}}/fmerest/{{ver}}/repositories/' + repository + '/items/' + workspace + '/parameters');
         
         this._ajax(url, function(json){
             callback(json);
@@ -260,8 +265,8 @@ var FMEServer = ( function() {
      * @param {Function} callback Callback function accepting the json return value
      */
     function getSchedules(callback) {
-        var callback = callback || this._returnObject;
-        var url = this._getSettings('server') + '/fmerest/' + this._getSettings('version') + '/schedules';
+        callback = callback || this._returnObj;
+        var url = this._URL('{{svr}}/fmerest/{{ver}}/schedules');
 
         this._ajax(url, function(json){
             callback(json);
@@ -276,8 +281,8 @@ var FMEServer = ( function() {
      * @param {Function} callback Callback function accepting the json return value
      */
     function getScheduleItem(category, item, callback) {
-        var callback = callback || this._returnObject;
-        var url = this._getSettings('server') + '/fmerest/' + this._getSettings('version') + '/schedules/' + category + '/' + item;
+        callback = callback || this._returnObj;
+        var url = this._URL('{{svr}}/fmerest/{{ver}}/schedules/' + category + '/' + item);
 
         this._ajax(url, function(json){
             callback(json);
@@ -292,13 +297,13 @@ var FMEServer = ( function() {
      * @param {Function} callback Callback function accepting the json return value
      */
     function enableScheduleItem(category, item, callback) {
-        var callback = callback || this._returnObject;
-        var url = this._getSettings('server') + '/fmerest/' + this._getSettings('version') + '/schedules/' + category + '/' + item + '/enabled';
-        var parameters = 'value=true';
+        callback = callback || this._returnObj;
+        var url = this._URL('{{svr}}/fmerest/{{ver}}/schedules/' + category + '/' + item + '/enabled');
+        var params = 'value=true';
 
         this._ajax(url, function(json){
             callback(json);
-        }, 'PUT', parameters);
+        }, 'PUT', params);
     }
 
 
@@ -309,13 +314,13 @@ var FMEServer = ( function() {
      * @param {Function} callback Callback function accepting the json return value
      */
     function disableScheduleItem(category, item, callback) {
-        var callback = callback || this._returnObject;
-        var url = this._getSettings('server') + '/fmerest/' + this._getSettings('version') + '/schedules/' + category + '/' + item + '/enabled';
-        var parameters = 'value=false';
+        callback = callback || this._returnObj;
+        var url = this._URL('{{svr}}/fmerest/{{ver}}/schedules/' + category + '/' + item + '/enabled');
+        var params = 'value=false';
         
         this._ajax(url, function(json){
             callback(json);
-        }, 'PUT', parameters);
+        }, 'PUT', params);
     }
 
 
@@ -327,13 +332,13 @@ var FMEServer = ( function() {
      * @param {Function} callback Callback function accepting the json return value
      */
     function replaceScheduleItem(category, item, schedule, callback) {
-        var callback = callback || this._returnObject;
-        var url = this._getSettings('server') + '/fmerest/' + this._getSettings('version') + '/schedules/' + category + '/' + item;
-        var parameters = JSON.stringify(schedule);
+        callback = callback || this._returnObj;
+        var url = this._URL('{{svr}}/fmerest/{{ver}}/schedules/' + category + '/' + item);
+        var params = JSON.stringify(schedule);
         
         this._ajax(url, function(json){
             callback(json);
-        }, 'PUT', parameters);
+        }, 'PUT', params);
     }
 
     /**
@@ -343,8 +348,8 @@ var FMEServer = ( function() {
      * @param {Function} callback Callback function accepting the json return value
      */
     function removeScheduleItem(category, item, callback) {
-        var callback = callback || this._returnObject;
-        var url = this._getSettings('server') + '/fmerest/' + this._getSettings('version') + '/schedules/' + category + '/' + item;
+        callback = callback || this._returnObj;
+        var url = this._URL('{{svr}}/fmerest/{{ver}}/schedules/' + category + '/' + item);
         
         this._ajax(url, function(json){
             callback(json);
@@ -358,13 +363,13 @@ var FMEServer = ( function() {
      * @param {Function} callback Callback function accepting the json return value
      */
     function createScheduleItem(schedule, callback) {
-        var callback = callback || this._returnObject;
-        var url = this._getSettings('server') + '/fmerest/' + this._getSettings('version') + '/schedules';
-        var parameters = JSON.stringify(schedule);
+        callback = callback || this._returnObj;
+        var url = this._URL('{{svr}}/fmerest/{{ver}}/schedules');
+        var params = JSON.stringify(schedule);
 
         this._ajax(url, function(json){
             callback(json);
-        }, 'POST', parameters);
+        }, 'POST', params);
     }
 
 
@@ -373,8 +378,8 @@ var FMEServer = ( function() {
      * @param {Function} callback Callback function accepting the json return value
      */
     function getAllPublications(callback) {
-        var callback = callback || this._returnObject;
-        var url = this._getSettings('server') + '/fmerest/' + this._getSettings('version') + '/notifications/publications';
+        callback = callback || this._returnObj;
+        var url = this._URL('{{svr}}/fmerest/{{ver}}/notifications/publications');
         
         this._ajax(url, function(json){
             callback(json);
@@ -388,9 +393,9 @@ var FMEServer = ( function() {
      * @param {Function} callback Callback function accepting the json return value
      */
     function getPublication(name, callback) {
-        var callback = callback || this._returnObject;
-        var name = name.replace(/ /g, '%20');
-        var url = this._getSettings('server') + '/fmerest/' + this._getSettings('version') + '/notifications/publications/' + name;
+        callback = callback || this._returnObj;
+        name = encodeURIComponent(name).replace(/%20/g, '+');
+        var url = this._URL('{{svr}}/fmerest/{{ver}}/notifications/publications/' + name);
         
         this._ajax(url, function(json){
             callback(json);
@@ -404,13 +409,13 @@ var FMEServer = ( function() {
      * @param {Function} callback Callback function accepting the json return value
      */
     function createPublication(publication, callback) {
-        var callback = callback || this._returnObject;
-        var url = this._getSettings('server') + '/fmerest/' + this._getSettings('version') + '/notifications/publications';
-        var parameters = publication;
+        callback = callback || this._returnObj;
+        var url = this._URL('{{svr}}/fmerest/{{ver}}/notifications/publications');
+        var params = publication;
         
         this._ajax(url, function(json){
             callback(json);
-        }, 'POST', parameters);
+        }, 'POST', params);
     }
 
 
@@ -421,14 +426,14 @@ var FMEServer = ( function() {
      * @param {Function} callback Callback function accepting the json return value
      */
     function updatePublication(name, publication, callback) {
-        var callback = callback || this._returnObject;
-        var name = name.replace(/ /g, '%20');
-        var url = this._getSettings('server') + '/fmerest/' + this._getSettings('version') + '/notifications/publications/' + name;
-        var parameters = publication;
+        callback = callback || this._returnObj;
+        name = encodeURIComponent(name).replace(/%20/g, '+');
+        var url = this._URL('{{svr}}/fmerest/{{ver}}/notifications/publications/' + name);
+        var params = publication;
         
         this._ajax(url, function(json){
             callback(json);
-        }, 'PUT', parameters);
+        }, 'PUT', params);
     }
 
 
@@ -437,10 +442,10 @@ var FMEServer = ( function() {
      * @param {String} publication name
      * @param {Function} callback Callback function accepting the json return value
      */
-    function deletePublication(publication, callback) {
-        var callback = callback || this._returnObject;
-        var publication = publication.replace(/ /g, '%20');
-        var url = this._getSettings('server') + '/fmerest/' + this._getSettings('version') + '/notifications/publications/' + publication;
+    function deletePublication(name, callback) {
+        callback = callback || this._returnObj;
+        name = encodeURIComponent(name).replace(/%20/g, '+');
+        var url = this._URL('{{svr}}/fmerest/{{ver}}/notifications/publications/' + name);
         
         this._ajax(url, function(json){
             callback(json);
@@ -453,8 +458,8 @@ var FMEServer = ( function() {
      * @param {Function} callback Callback function accepting the json return value
      */
     function getAllSubscriptions(callback) {
-        var callback = callback || this._returnObject;
-        var url = this._getSettings('server') + '/fmerest/' + this._getSettings('version') + '/notifications/subscriptions';
+        callback = callback || this._returnObj;
+        var url = this._URL('{{svr}}/fmerest/{{ver}}/notifications/subscriptions');
         
         this._ajax(url, function(json){
             callback(json);
@@ -468,9 +473,9 @@ var FMEServer = ( function() {
      * @param {Function} callback Callback function accepting the json return value
      */
     function getSubscription(name, callback) {
-        var callback = callback || this._returnObject;
-        var name = name.replace(/ /g, '%20');
-        var url = this._getSettings('server') + '/fmerest/' + this._getSettings('version') + '/notifications/subscription/' + name;
+        callback = callback || this._returnObj;
+        name = encodeURIComponent(name).replace(/%20/g, '+');
+        var url = this._URL('{{svr}}/fmerest/{{ver}}/notifications/subscription/' + name);
         
         this._ajax(url, function(json){
             callback(json);
@@ -484,9 +489,9 @@ var FMEServer = ( function() {
      * @param {Function} callback Callback function accepting the json return value
      */
     function createSubscription(subscription, callback) {
-        var callback = callback || this._returnObject;
-        var url = this._getSettings('server') + '/fmerest/' + this._getSettings('version') + '/notifications/subscriptions';
-        var parameters = subscription;
+        callback = callback || this._returnObj;
+        var url = this._URL('{{svr}}/fmerest/{{ver}}/notifications/subscriptions');
+        var params = subscription;
         
         this._ajax(url, function(json){
             callback(json);
@@ -501,14 +506,14 @@ var FMEServer = ( function() {
      * @param {Function} callback Callback function accepting the json return value
      */
     function updateSubscription(name, subscription, callback) {
-        var callback = callback || this._returnObject;
-        var name = name.replace(/ /g, '%20');
-        var url = this._getSettings('server') + '/fmerest/' + this._getSettings('version') + '/notifications/subscription/' + name;
-        var parameters = subscription;
+        callback = callback || this._returnObj;
+        name = encodeURIComponent(name).replace(/%20/g, '+');
+        var url = this._URL('{{svr}}/fmerest/{{ver}}/notifications/subscription/' + name);
+        var params = subscription;
         
         this._ajax(url, function(json){
             callback(json);
-        }, 'PUT', parameters);
+        }, 'PUT', params);
     }
 
 
@@ -517,10 +522,10 @@ var FMEServer = ( function() {
      * @param {String} subscription name
      * @param {Function} callback Callback function accepting the json return value
      */
-    function deleteSubscription(subscription, callback) {
-        var callback = callback || this._returnObject;
-        var subscription = subscription.replace(/ /g, '%20');
-        var url = this._getSettings('server') + '/fmerest/' + this._getSettings('version') + '/notifications/subscriptions/' + subscription;
+    function deleteSubscription(name, callback) {
+        callback = callback || this._returnObj;
+        name = encodeURIComponent(name).replace(/%20/g, '+');
+        var url = this._URL('{{svr}}/fmerest/{{ver}}/notifications/subscriptions/' + name);
         
         this._ajax(url, function(json){
             callback(json);
@@ -533,8 +538,8 @@ var FMEServer = ( function() {
      * @param {Function} callback Callback function accepting the json return value
      */
     function getNotificationTopics(callback) {
-        var callback = callback || this._returnObject;
-        var url = this._getSettings('server') + '/fmerest/' + this._getSettings('version') + '/notifications/topics';
+        callback = callback || this._returnObj;
+        var url = this._URL('{{svr}}/fmerest/{{ver}}/notifications/topics');
         
         this._ajax(url, function(json){
             callback(json);
@@ -547,8 +552,8 @@ var FMEServer = ( function() {
      * @param {Function} callback Callback function accepting the json return value
      */
     function getNotificationProtocols(callback) {
-        var callback = callback || this._returnObject;
-        var url = this._getSettings('server') + '/fmerest/' + this._getSettings('version') + '/notifications/';
+        callback = callback || this._returnObj;
+        var url = this._URL('{{svr}}/fmerest/{{ver}}/notifications/');
         
         this._ajax(url, function(json){
             callback(json);
@@ -558,11 +563,12 @@ var FMEServer = ( function() {
 
     /**
      * Query Notification Protocol
+	 * @param {String} protocol name
      * @param {Function} callback Callback function accepting the json return value
      */
-    function queryNotificationProtocol(protocol, callback) {
-        var callback = callback || this._returnObject;
-        var url = this._getSettings('server') + '/fmerest/' + this._getSettings('version') + '/notifications/' + protocol;
+    function queryNotificationProtocol(name, callback) {
+        callback = callback || this._returnObj;
+        var url = this._URL('{{svr}}/fmerest/{{ver}}/notifications/' + name);
         
         this._ajax(url, function(json){
             callback(json);
@@ -575,13 +581,13 @@ var FMEServer = ( function() {
      * @param {Function} callback Callback function accepting the json return value
      */
     function lookupToken(user, password, callback) {
-        var callback = callback || this._returnObject;
-        var url = this._getSettings('server') + '/fmetoken/service/view.json';
-        var parameters = 'user=' + user + '&password=' + password;
+        callback = callback || this._returnObj;
+        var url = this._URL('{{svr}}/fmetoken/service/view.json');
+        var params = 'user=' + user + '&password=' + password;
         
         this._ajax(url, function(json){
             callback(json);
-        }, 'POST', parameters);
+        }, 'POST', params);
     }
 
 
@@ -590,13 +596,13 @@ var FMEServer = ( function() {
      * @param {Function} callback Callback function accepting the json return value
      */
     function generateToken(user, password, count, unit, callback) {
-        var callback = callback || this._returnObject;
-        var url = this._getSettings('server') + '/fmetoken/service/generate';
-        var parameters = 'user=' + user + '&password=' + password + '&expiration=' + count + '&timeunit=' + unit;
+        callback = callback || this._returnObj;
+        var url = this._URL('{{svr}}/fmetoken/service/generate');
+        var params = 'user=' + user + '&password=' + password + '&expiration=' + count + '&timeunit=' + unit;
         
         this._ajax(url, function(json){
             callback(json);
-        }, 'POST', parameters);
+        }, 'POST', params);
     }
 
 
@@ -604,16 +610,16 @@ var FMEServer = ( function() {
      * Submit a Job to Run asynchronously
      * @param {String} repository The repository on the FME Server
      * @param {String} workspace The name of the workspace on FME Server, i.e. workspace.fmw
-     * @param {String} parameters Any workspace-specific parameter values
+     * @param {String} params Any workspace-specific parameter values
      * @param {Function} callback Callback function accepting the json return value
      */
-    function submitJob(repository, workspace, parameters, callback) {
-        var callback = callback || this._returnObject;
-        var url = this._getSettings('server') + '/fmerest/' + this._getSettings('version') + '/transformations/commands/submit/' + repository + '/' + workspace;
+    function submitJob(repository, workspace, params, callback) {
+        callback = callback || this._returnObj;
+        var url = this._URL('{{svr}}/fmerest/{{ver}}/transformations/commands/submit/' + repository + '/' + workspace);
 
         this._ajax(url, function(json){
             callback(json);
-        }, 'POST', JSON.stringify(parameters));
+        }, 'POST', JSON.stringify(params));
     }
 
 
@@ -621,16 +627,16 @@ var FMEServer = ( function() {
      * Submit a Job to Run Synchronously
      * @param {String} repository The repository on the FME Server
      * @param {String} workspace The name of the workspace on FME Server, i.e. workspace.fmw
-     * @param {String} parameters Any workspace-specific parameter values
+     * @param {String} params Any workspace-specific parameter values
      * @param {Function} callback Callback function accepting the json return value
      */
-    function submitSyncJob(repository, workspace, parameters, callback) {
-        var callback = callback || this._returnObject;
-        var url = this._getSettings('server') + '/fmerest/' + this._getSettings('version') + '/transformations/commands/transact/' + repository + '/' + workspace;
+    function submitSyncJob(repository, workspace, params, callback) {
+        callback = callback || this._returnObj;
+        var url = this._URL('{{svr}}/fmerest/{{ver}}/transformations/commands/transact/' + repository + '/' + workspace);
         
         this._ajax(url, function(json){
             callback(json);
-        }, 'POST', JSON.stringify(parameters));
+        }, 'POST', JSON.stringify(params));
     }
 
 
@@ -639,12 +645,12 @@ var FMEServer = ( function() {
      * @param {String} url Full url of the REST call including the server
      * @param {String} type The request type, i.e. GET, POST, PUSH, ...
      * @param {Function} callback Callback function accepting the json return value
-     * @param {String} parameters Any parameter values required by the API (Optional)
+     * @param {String} params Any parameter values required by the API (Optional)
      */
-    function customRequest(url, type, callback, parameters) {
-        var callback = callback || this._returnObject;
-        var parameters = parameters || null;
-        var type = type.toUpperCase();
+    function customRequest(url, type, callback, params) {
+        callback = callback || this._returnObj;
+        params = params || null;
+        type = type.toUpperCase();
 
         this._ajax(url, function(json){
             callback(json);
@@ -687,7 +693,7 @@ var FMEServer = ( function() {
         fme.prototype.submitJob = submitJob;
         fme.prototype.submitSyncJob = submitSyncJob;
         fme.prototype.customRequest = customRequest;
-    };
+    }
 
     /**
      * Return the constructed FMEServer Connection Object
