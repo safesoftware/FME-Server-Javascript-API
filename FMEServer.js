@@ -43,37 +43,64 @@ var FMEServer = ( function() {
 
     /**
      * @constructor FME Server connection object
-     * @param {String} svr Server URL
+     * @param {Object} config The object holding the configuration
+     *      { server : server_url,
+     *        token : token_string,
+     *        format : json_xml_or_http,
+     *        detail : high_or_low,
+     *        port : port_number_string,
+     *        ssl : true_or_false
+     *      }
+     * -------------------- OR: LEGACY PARAMETERS BELOW --------------------
+     * @param {String} server Server URL
      * @param {String} token Obtained from http://yourfmeserver/fmetoken
      * @param {String} format Output format desired, json (default), xml, or html
      * @param {String} detail - high (default) or low
      * @param {Number} port Port, default is 80 - string
      * @param {Boolean} ssl Connect to the server via HTTPS
      */
-    var fme = function(svr, token, format, detail, port, ssl) {
-
-        if (svr.indexOf('http://') === -1) {
-            svr = 'http://' + svr;
-        }
-
-        if (ssl) {
-            svr = svr.replace('http://','https://');
-        }
-
-        var config = {
-            server : svr,
-            token : token,
-            accept : format || 'json',
-            detail :  detail || 'high',
-            port : port || '80',
-            ssl : ssl || false,
-            version : 'v2'
-        };
+    var fme = function(server, token, format, detail, port, ssl) {
 
         /**
-         * Get Settings Method
+         * Check for the server url and the token parameters - required for connection
+         * @return null if not valid
+         */
+        if (server == undefined || (typeof server == 'object' && server.server == undefined)) {
+            console.log( 'FMEServer.js Error.  You did not specify a server URL in your configuration paramaters.' );
+            return null;
+        } else if (token == undefined && (typeof server == 'object' && server.token == undefined)) {
+            console.log( 'FMEServer.js Error.  You did not specify a token in your configuration paramaters.' );
+            return null;
+        }
+
+        /**
+         * Configuration object, holds instance configuration
+         */
+        var config = { version : 'v2' };
+
+        /**
+         * Check for String paramaters vs. object, and build the configuration
+         */
+        if (typeof server == 'object') {
+            config.server = server.server;
+            config.token = server.token;
+            config.accept = server.format || 'json';
+            config.detail =  server.detail || 'high';
+            config.port = server.port || '80';
+            config.ssl = server.ssl || false;
+        } else {
+            config.server = server;
+            config.token = token;
+            config.accept = format || 'json';
+            config.detail =  detail || 'high';
+            config.port = port || '80';
+            config.ssl = ssl || false;
+        }
+
+        /**
+         * Get Configuration Method
          * @param {String} name of setting
-         * @return {String} individual parameter, or {Object} settings
+         * @return {String} individual parameter, or {Object} config
          */
         this._config = function(param) {
             param = param || null;
@@ -82,6 +109,34 @@ var FMEServer = ( function() {
             }
             return config;
         };
+
+        /**
+         * Converts server host to URL
+         */
+        if (this._config('server').indexOf('http://') === -1) {
+            config.server = 'http://' + this._config('server');
+        }
+
+        /**
+         * Changes http:// to https:// if SSL is required
+         */
+        if (this._config('server').ssl) {
+            config.server = config.server.replace('http://','https://');
+        }
+
+        /**
+         * Attaches port to server URL if not a standard port
+         */
+        var stdPorts = ['80', '443'];
+        if (stdPorts.indexOf(this._config('port')) === -1) {
+            var port_URL = this._config('server').split('://');
+            if (this._config('ssl')) {
+                port_URL = port_URL[0] + '://' + port_URL[1] + ':' + this._config('port');
+            } else {
+                port_URL = port_URL[0] + ':' + this._config('port') + '//' + port_URL[1];
+            }
+            config.server = port_URL;
+        }
 
         /**
          * Return Object Method.
@@ -116,7 +171,7 @@ var FMEServer = ( function() {
             if ((rtyp == 'PUT' || rtyp == 'POST') && params.indexOf('{')) {
                 req.setRequestHeader('Content-type', 'application/x-www-form-urlencoded');
             }
-            if (params !== null && params.indexOf('{') != -1) {
+            if (params !== null && params.indexOf('{') !== -1) {
                 req.setRequestHeader('Content-type', 'application/json');
             }
 
@@ -125,7 +180,7 @@ var FMEServer = ( function() {
                 
                 if (req.readyState == done) {
                     var resp = req.responseText;
-                    if (resp.indexOf('{') != -1) {
+                    if (resp.indexOf('{') !== -1) {
                         resp = JSON.parse(resp);
                     } else if (resp.length === 0 && req.status == 204) {
                         resp = { 'delete' : true };
@@ -135,12 +190,17 @@ var FMEServer = ( function() {
             };
             req.send(params);
         };
-		
-		this._URL = function(url) {
-			url = url.replace(/{{svr}}/g, this._config('server'));
-			url = url.replace(/{{ver}}/g, this._config('version'));
-			return url;
-		};
+        
+        /**
+         * Build URL from config Method.
+         * @param {String} url URL with placeholders
+         * @return {String} the result url
+         */
+        this._URL = function(url) {
+            url = url.replace(/{{svr}}/g, this._config('server'));
+            url = url.replace(/{{ver}}/g, this._config('version'));
+            return url;
+        };
 
         _init();
     };
@@ -411,7 +471,7 @@ var FMEServer = ( function() {
     function createPublication(publication, callback) {
         callback = callback || this._returnObj;
         var url = this._URL('{{svr}}/fmerest/{{ver}}/notifications/publications');
-        var params = publication;
+        var params = JSON.stringify(publication);
         
         this._ajax(url, function(json){
             callback(json);
@@ -429,7 +489,7 @@ var FMEServer = ( function() {
         callback = callback || this._returnObj;
         name = encodeURIComponent(name).replace(/%20/g, '+');
         var url = this._URL('{{svr}}/fmerest/{{ver}}/notifications/publications/' + name);
-        var params = publication;
+        var params = JSON.stringify(publication);
         
         this._ajax(url, function(json){
             callback(json);
@@ -450,6 +510,35 @@ var FMEServer = ( function() {
         this._ajax(url, function(json){
             callback(json);
         }, 'DELETE');
+    }
+
+
+    /**
+     * Get Publisher Protocols
+     * @param {Function} callback Callback function accepting the json return value
+     */
+    function getPublisherProtocols(callback) {
+        callback = callback || this._returnObj;
+        var url = this._URL('{{svr}}/fmerest/{{ver}}/notifications/publishers/');
+        
+        this._ajax(url, function(json){
+            callback(json);
+        });
+    }
+
+
+    /**
+     * Query Publisher Protocol
+     * @param {String} protocol name
+     * @param {Function} callback Callback function accepting the json return value
+     */
+    function queryPublisherProtocol(name, callback) {
+        callback = callback || this._returnObj;
+        var url = this._URL('{{svr}}/fmerest/{{ver}}/notifications/publishers/' + name);
+        
+        this._ajax(url, function(json){
+            callback(json);
+        });
     }
 
 
@@ -491,11 +580,11 @@ var FMEServer = ( function() {
     function createSubscription(subscription, callback) {
         callback = callback || this._returnObj;
         var url = this._URL('{{svr}}/fmerest/{{ver}}/notifications/subscriptions');
-        var params = subscription;
+        var params = JSON.stringify(subscription);
         
         this._ajax(url, function(json){
             callback(json);
-        }, 'POST', publication);
+        }, 'POST', params);
     }
 
 
@@ -509,7 +598,7 @@ var FMEServer = ( function() {
         callback = callback || this._returnObj;
         name = encodeURIComponent(name).replace(/%20/g, '+');
         var url = this._URL('{{svr}}/fmerest/{{ver}}/notifications/subscription/' + name);
-        var params = subscription;
+        var params = JSON.stringify(subscription);
         
         this._ajax(url, function(json){
             callback(json);
@@ -534,41 +623,41 @@ var FMEServer = ( function() {
 
 
     /**
+     * Get Subscriber Protocols
+     * @param {Function} callback Callback function accepting the json return value
+     */
+    function getSubscriberProtocols(callback) {
+        callback = callback || this._returnObj;
+        var url = this._URL('{{svr}}/fmerest/{{ver}}/notifications/subscribers/');
+        
+        this._ajax(url, function(json){
+            callback(json);
+        });
+    }
+
+
+    /**
+     * Query Subscriber Protocol
+     * @param {String} protocol name
+     * @param {Function} callback Callback function accepting the json return value
+     */
+    function querySubscriberProtocol(name, callback) {
+        callback = callback || this._returnObj;
+        var url = this._URL('{{svr}}/fmerest/{{ver}}/notifications/subscribers/' + name);
+        
+        this._ajax(url, function(json){
+            callback(json);
+        });
+    }
+
+
+    /**
      * Get Notification Topics
      * @param {Function} callback Callback function accepting the json return value
      */
     function getNotificationTopics(callback) {
         callback = callback || this._returnObj;
         var url = this._URL('{{svr}}/fmerest/{{ver}}/notifications/topics');
-        
-        this._ajax(url, function(json){
-            callback(json);
-        });
-    }
-
-
-    /**
-     * Get Notification Protocols
-     * @param {Function} callback Callback function accepting the json return value
-     */
-    function getNotificationProtocols(callback) {
-        callback = callback || this._returnObj;
-        var url = this._URL('{{svr}}/fmerest/{{ver}}/notifications/');
-        
-        this._ajax(url, function(json){
-            callback(json);
-        });
-    }
-
-
-    /**
-     * Query Notification Protocol
-	 * @param {String} protocol name
-     * @param {Function} callback Callback function accepting the json return value
-     */
-    function queryNotificationProtocol(name, callback) {
-        callback = callback || this._returnObj;
-        var url = this._URL('{{svr}}/fmerest/{{ver}}/notifications/' + name);
         
         this._ajax(url, function(json){
             callback(json);
@@ -680,14 +769,16 @@ var FMEServer = ( function() {
         fme.prototype.createPublication = createPublication;
         fme.prototype.updatePublication = updatePublication;
         fme.prototype.deletePublication = deletePublication;
+        fme.prototype.getPublisherProtocols = getPublisherProtocols;
+        fme.prototype.queryPublisherProtocol = queryPublisherProtocol;
         fme.prototype.getAllSubscriptions = getAllSubscriptions;
         fme.prototype.getSubscription = getSubscription;
         fme.prototype.createSubscription = createSubscription;
         fme.prototype.updateSubscription = updateSubscription;
         fme.prototype.deleteSubscription = deleteSubscription;
+        fme.prototype.getSubscriberProtocols = getSubscriberProtocols;
+        fme.prototype.querySubscriberProtocol = querySubscriberProtocol;
         fme.prototype.getNotificationTopics = getNotificationTopics;
-        fme.prototype.getNotificationProtocols = getNotificationProtocols;
-        fme.prototype.queryNotificationProtocol = queryNotificationProtocol;
         fme.prototype.lookupToken = lookupToken;
         fme.prototype.generateToken = generateToken;
         fme.prototype.submitJob = submitJob;
