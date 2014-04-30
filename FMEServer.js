@@ -37,13 +37,13 @@
  * @author Safe Software
  * @version 3.0
  * @this FMEServer
- * @return {FMEServer} FME Server connection object
+ * @return {FMEServer} fme - FME Server connection object
  */
 var FMEServer = ( function() {
 
     /**
      * @constructor FME Server connection object
-     * @param {Object} config The object holding the configuration
+     * @param {Object} config - The object holding the configuration
      *      { server : server_url,
      *        token : token_string,
      *        format : json_xml_or_http,
@@ -52,18 +52,18 @@ var FMEServer = ( function() {
      *        ssl : true_or_false
      *      }
      * -------------------- OR: LEGACY PARAMETERS BELOW --------------------
-     * @param {String} server Server URL
-     * @param {String} token Obtained from http://yourfmeserver/fmetoken
-     * @param {String} format Output format desired, json (default), xml, or html
+     * @param {String} server - Server URL
+     * @param {String} token - Obtained from http://yourfmeserver/fmetoken
+     * @param {String} format - Output format desired, json (default), xml, or html
      * @param {String} detail - high (default) or low
-     * @param {Number} port Port, default is 80 - string
-     * @param {Boolean} ssl Connect to the server via HTTPS
+     * @param {Number} port - Port, default is 80 - string
+     * @param {Boolean} ssl - Connect to the server via HTTPS
      */
     var fme = function(server, token, format, detail, port, ssl) {
 
         /**
          * Check for the server url and the token parameters - required for connection
-         * @return null if not valid
+         * @return null - if not valid
          */
         if (server == undefined || (typeof server == 'object' && server.server == undefined)) {
             console.log( 'FMEServer.js Error.  You did not specify a server URL in your configuration paramaters.' );
@@ -99,8 +99,8 @@ var FMEServer = ( function() {
 
         /**
          * Get Configuration Method
-         * @param {String} name of setting
-         * @return {String} individual parameter, or {Object} config
+         * @param {String} name - Name of setting
+         * @return {String} - individual parameter, or {Object} - config
          */
         this._config = function(param) {
             param = param || null;
@@ -113,7 +113,7 @@ var FMEServer = ( function() {
         /**
          * Converts server host to URL
          */
-        if (this._config('server').indexOf('http://') === -1) {
+        if (this._config('server').substring(0, 4) != 'http') {
             config.server = 'http://' + this._config('server');
         }
 
@@ -140,8 +140,8 @@ var FMEServer = ( function() {
 
         /**
          * Return Object Method.
-         * @param {Object} object to return
-         * @return {Object} the object
+         * @param {Object} obj - Object to return
+         * @return {Object} obj - The Object
          */
         this._returnObj = function(obj) {
             return obj;
@@ -149,14 +149,17 @@ var FMEServer = ( function() {
 
         /**
          * AJAX Method
-         * @param {String} url The request URL
-         * @param {Function} callback Callback function accepting json response
-         * @param {String} rtyp Type of request ex: PUT, GET(Default)
-         * @param {String} Param -> Value pair string of items or json
+         * @param {String} url - The request URL
+         * @param {Function} callback - Callback function accepting json response
+         * @param {String} rtyp - Type of request ex: PUT, GET(Default)
+         * @param {String} params - The json or name=value pair string or parameters
+         * @param {String} ctyp - Content type as a string (optional)
          */
-        this._ajax = function(url, callback, rtyp, params) {
+        this._ajax = function(url, callback, rtyp, params, ctyp) {
             rtyp = rtyp || 'GET';
             params = params || null;
+            ctyp = ctyp || null;
+
             var req = new XMLHttpRequest();
             
             if (url.indexOf('?') != -1) {
@@ -168,11 +171,8 @@ var FMEServer = ( function() {
             req.open(rtyp, url, true);
             req.setRequestHeader('Accept', this._config('accept'));
 
-            if ((rtyp == 'PUT' || rtyp == 'POST') && params.indexOf('{')) {
-                req.setRequestHeader('Content-type', 'application/x-www-form-urlencoded');
-            }
-            if (params !== null && params.indexOf('{') !== -1) {
-                req.setRequestHeader('Content-type', 'application/json');
+            if(ctyp !== null) {
+                req.setRequestHeader('Content-type', ctyp);
             }
 
             req.onreadystatechange = function() {
@@ -180,10 +180,12 @@ var FMEServer = ( function() {
                 
                 if (req.readyState == done) {
                     var resp = req.responseText;
-                    if (resp.indexOf('{') !== -1) {
+                    if (resp.indexOf('{') != -1) {
                         resp = JSON.parse(resp);
                     } else if (resp.length === 0 && req.status == 204) {
                         resp = { 'delete' : true };
+                    } else if (resp.length === 0 && req.status == 202) {
+                        resp = { 'value' : true };
                     }
                     callback(resp);
                 }
@@ -193,8 +195,8 @@ var FMEServer = ( function() {
         
         /**
          * Build URL from config Method.
-         * @param {String} url URL with placeholders
-         * @return {String} the result url
+         * @param {String} url - URL with placeholders
+         * @return {String} url - The result url
          */
         this._URL = function(url) {
             url = url.replace(/{{svr}}/g, this._config('server'));
@@ -209,9 +211,9 @@ var FMEServer = ( function() {
     /**
      * Gets the current session id from FME Server. You can use this to get the path to any
      * files added through the file upload service.
-     * @param {String} repository The repository on the FME Server
-     * @param {String} workspace The name of the workspace on FME Server, i.e. workspace.fmw
-     * @param {Function} callback Callback function accepting sessionID as a string
+     * @param {String} repository - The repository on the FME Server
+     * @param {String} workspace - The name of the workspace on FME Server, i.e. workspace.fmw
+     * @param {Function} callback - Callback function accepting sessionID as a string
      */
     function getSessionID(repository, workspace, callback){
         callback = callback || this._returnObj;
@@ -220,22 +222,22 @@ var FMEServer = ( function() {
 
         this._ajax(url, function(json) {
             callback(json.serviceResponse.session);
-        }, params);
+        }, params, 'application/x-www-form-urlencoded');
     }
 
 
     /**
      * Returns a WebSocket connection to the specified server
-     * @param {String} stream_id A name for the desired WebSocket stream id
-     * @return {WebSocket} A WebSocket connection
-     * @param {Function} callback Callback function to run after connection is opened (optional)
+     * @param {String} id - A name for the desired WebSocket stream id
+     * @param {Function} callback - Callback function to run after connection is opened (optional)
+     * @return {WebSocket} ws - A WebSocket connection
      */
-    function getWebSocketConnection(stream_id, callback) {
+    function getWebSocketConnection(id, callback) {
         callback = callback || null;
         var url;
 
         if (this._config('server').indexOf('https://') != -1) {
-            url = url.replace('https://','');
+            url = this._config('server').replace('https://','');
         } else {
             url = this._config('server').replace('http://','');
         }
@@ -244,7 +246,7 @@ var FMEServer = ( function() {
         ws.onopen = function() {
             var openMsg = {
                 ws_op : 'open',
-                ws_stream_id : stream_id
+                ws_stream_id : id
             };
             ws.send(JSON.stringify(openMsg));
             if (callback !== null){
@@ -257,10 +259,10 @@ var FMEServer = ( function() {
 
     /**
      * Runs a workspace using the Data Download service and returns json
-     * @param {String} repository The repository on the FME Server
-     * @param {String} workspace The name of the workspace on FME Server, i.e. workspace.fmw
-     * @param {String} params Any workspace-specific parameter values
-     * @param {Function} callback Callback function accepting the json return value
+     * @param {String} repository - The repository on the FME Server
+     * @param {String} workspace - The name of the workspace on FME Server, i.e. workspace.fmw
+     * @param {String} params - Any workspace-specific parameter values
+     * @param {Function} callback - Callback function accepting the json return value
      */
     function runDataDownload(repository, workspace, params, callback){
         callback = callback || this._returnObj;
@@ -269,13 +271,13 @@ var FMEServer = ( function() {
 
         this._ajax(url, function(json){
             callback(json);
-        }, 'POST', params);
+        }, 'POST', params, 'application/x-www-form-urlencoded');
     }
 
 
     /**
      * Retrieves all available repositories on the FME Server
-     * @param {Function} callback Callback function accepting the json return value
+     * @param {Function} callback - Callback function accepting the json return value
      */
     function getRepositories(callback) {
         callback = callback || this._returnObj;
@@ -289,9 +291,9 @@ var FMEServer = ( function() {
 
     /**
      * Retrieves all items on the FME Server for a given Repository
-     * @param {String} repository The repository on the FME Server
-     * @param {String} type (optional) the specific type of file item requested
-     * @param {Function} callback Callback function accepting the json return value
+     * @param {String} repository - The repository on the FME Server
+     * @param {String} type - The specific type of file item requested (optional)
+     * @param {Function} callback - Callback function accepting the json return value
      */
     function getRepositoryItems(repository, type, callback) {
         type = type || '';
@@ -306,9 +308,9 @@ var FMEServer = ( function() {
 
     /**
      * Retrieves all published params for a given workspace
-     * @param {String} repository The repository on the FME Server
-     * @param {String} workspace The name of the workspace on FME Server, i.e. workspace.fmw
-     * @param {Function} callback Callback function accepting the json return value
+     * @param {String} repository - The repository on the FME Server
+     * @param {String} workspace - The name of the workspace on FME Server, i.e. workspace.fmw
+     * @param {Function} callback - Callback function accepting the json return value
      */
     function getWorkspaceParameters(repository, workspace, callback) {
         callback = callback || this._returnObj;
@@ -322,7 +324,7 @@ var FMEServer = ( function() {
 
     /**
      * Retrieves all scheduled items
-     * @param {Function} callback Callback function accepting the json return value
+     * @param {Function} callback - Callback function accepting the json return value
      */
     function getSchedules(callback) {
         callback = callback || this._returnObj;
@@ -336,9 +338,9 @@ var FMEServer = ( function() {
 
     /**
      * Returns a scheduled item
-     * @param {String} category Schedule category title
-     * @param {String} name Schedule name
-     * @param {Function} callback Callback function accepting the json return value
+     * @param {String} category - Schedule category title
+     * @param {String} name - Schedule name
+     * @param {Function} callback - Callback function accepting the json return value
      */
     function getScheduleItem(category, item, callback) {
         callback = callback || this._returnObj;
@@ -352,9 +354,9 @@ var FMEServer = ( function() {
 
     /**
      * Enables a scheduled item
-     * @param {String} category Schedule category title
-     * @param {String} name Schedule name
-     * @param {Function} callback Callback function accepting the json return value
+     * @param {String} category - Schedule category title
+     * @param {String} name - Schedule name
+     * @param {Function} callback - Callback function accepting the json return value
      */
     function enableScheduleItem(category, item, callback) {
         callback = callback || this._returnObj;
@@ -363,15 +365,15 @@ var FMEServer = ( function() {
 
         this._ajax(url, function(json){
             callback(json);
-        }, 'PUT', params);
+        }, 'PUT', params, 'application/x-www-form-urlencoded');
     }
 
 
     /**
      * Disables a scheduled item
-     * @param {String} category Schedule category title
-     * @param {String} item Schedule name
-     * @param {Function} callback Callback function accepting the json return value
+     * @param {String} category - Schedule category title
+     * @param {String} item - Schedule name
+     * @param {Function} callback - Callback function accepting the json return value
      */
     function disableScheduleItem(category, item, callback) {
         callback = callback || this._returnObj;
@@ -380,16 +382,16 @@ var FMEServer = ( function() {
         
         this._ajax(url, function(json){
             callback(json);
-        }, 'PUT', params);
+        }, 'PUT', params, 'application/x-www-form-urlencoded');
     }
 
 
     /**
      * Replaces a scheduled item
-     * @param {String} category Schedule category title
-     * @param {String} item Schedule name
-     * @param {Object} schedule Object holding the schedule information
-     * @param {Function} callback Callback function accepting the json return value
+     * @param {String} category - Schedule category title
+     * @param {String} item - Schedule name
+     * @param {Object} schedule - Object holding the schedule information
+     * @param {Function} callback - Callback function accepting the json return value
      */
     function replaceScheduleItem(category, item, schedule, callback) {
         callback = callback || this._returnObj;
@@ -398,14 +400,14 @@ var FMEServer = ( function() {
         
         this._ajax(url, function(json){
             callback(json);
-        }, 'PUT', params);
+        }, 'PUT', params, 'application/json');
     }
 
     /**
      * Remove a scheduled item
-     * @param {String} category Schedule category title
-     * @param {String} item Schedule name
-     * @param {Function} callback Callback function accepting the json return value
+     * @param {String} category - Schedule category title
+     * @param {String} item - Schedule name
+     * @param {Function} callback - Callback function accepting the json return value
      */
     function removeScheduleItem(category, item, callback) {
         callback = callback || this._returnObj;
@@ -419,8 +421,8 @@ var FMEServer = ( function() {
 
     /**
      * Create a scheduled item
-     * @param {Object} schedule Object holding the schedule information
-     * @param {Function} callback Callback function accepting the json return value
+     * @param {Object} schedule - Object holding the schedule information
+     * @param {Function} callback - Callback function accepting the json return value
      */
     function createScheduleItem(schedule, callback) {
         callback = callback || this._returnObj;
@@ -429,13 +431,13 @@ var FMEServer = ( function() {
 
         this._ajax(url, function(json){
             callback(json);
-        }, 'POST', params);
+        }, 'POST', params, 'application/json');
     }
 
 
     /**
      * Get all publications
-     * @param {Function} callback Callback function accepting the json return value
+     * @param {Function} callback - Callback function accepting the json return value
      */
     function getAllPublications(callback) {
         callback = callback || this._returnObj;
@@ -449,8 +451,8 @@ var FMEServer = ( function() {
 
     /**
      * Get a publication
-     * @param {String} publication name
-     * @param {Function} callback Callback function accepting the json return value
+     * @param {String} name - Publication name
+     * @param {Function} callback - Callback function accepting the json return value
      */
     function getPublication(name, callback) {
         callback = callback || this._returnObj;
@@ -465,8 +467,8 @@ var FMEServer = ( function() {
 
     /**
      * Create a publication
-     * @param {Object} publication Object holding the publication information
-     * @param {Function} callback Callback function accepting the json return value
+     * @param {Object} publication - Object holding the publication information
+     * @param {Function} callback - Callback function accepting the json return value
      */
     function createPublication(publication, callback) {
         callback = callback || this._returnObj;
@@ -475,15 +477,15 @@ var FMEServer = ( function() {
         
         this._ajax(url, function(json){
             callback(json);
-        }, 'POST', params);
+        }, 'POST', params, 'application/json');
     }
 
 
     /**
      * Update a publication
-     * @param {String} publication name
-     * @param {Object} publication Object holding the publication information
-     * @param {Function} callback Callback function accepting the json return value
+     * @param {String} name - Publication name
+     * @param {Object} publication - Object holding the publication information
+     * @param {Function} callback - Callback function accepting the json return value
      */
     function updatePublication(name, publication, callback) {
         callback = callback || this._returnObj;
@@ -493,14 +495,14 @@ var FMEServer = ( function() {
         
         this._ajax(url, function(json){
             callback(json);
-        }, 'PUT', params);
+        }, 'PUT', params, 'application/json');
     }
 
 
     /**
      * Delete a publication
-     * @param {String} publication name
-     * @param {Function} callback Callback function accepting the json return value
+     * @param {String} name - Publication name
+     * @param {Function} callback - Callback function accepting the json return value
      */
     function deletePublication(name, callback) {
         callback = callback || this._returnObj;
@@ -515,7 +517,7 @@ var FMEServer = ( function() {
 
     /**
      * Get Publisher Protocols
-     * @param {Function} callback Callback function accepting the json return value
+     * @param {Function} callback - Callback function accepting the json return value
      */
     function getPublisherProtocols(callback) {
         callback = callback || this._returnObj;
@@ -529,8 +531,8 @@ var FMEServer = ( function() {
 
     /**
      * Query Publisher Protocol
-     * @param {String} protocol name
-     * @param {Function} callback Callback function accepting the json return value
+     * @param {String} name - Protocol name
+     * @param {Function} callback - Callback function accepting the json return value
      */
     function queryPublisherProtocol(name, callback) {
         callback = callback || this._returnObj;
@@ -544,7 +546,7 @@ var FMEServer = ( function() {
 
     /**
      * Get all subscriptions
-     * @param {Function} callback Callback function accepting the json return value
+     * @param {Function} callback - Callback function accepting the json return value
      */
     function getAllSubscriptions(callback) {
         callback = callback || this._returnObj;
@@ -558,8 +560,8 @@ var FMEServer = ( function() {
 
     /**
      * Get a subscription
-     * @param {String} subscription name
-     * @param {Function} callback Callback function accepting the json return value
+     * @param {String} name - Subscription name
+     * @param {Function} callback - Callback function accepting the json return value
      */
     function getSubscription(name, callback) {
         callback = callback || this._returnObj;
@@ -574,8 +576,8 @@ var FMEServer = ( function() {
 
     /**
      * Create a subscription
-     * @param {Object} subscription Object holding the subscription information
-     * @param {Function} callback Callback function accepting the json return value
+     * @param {Object} subscription - Object holding the subscription information
+     * @param {Function} callback - Callback function accepting the json return value
      */
     function createSubscription(subscription, callback) {
         callback = callback || this._returnObj;
@@ -584,15 +586,15 @@ var FMEServer = ( function() {
         
         this._ajax(url, function(json){
             callback(json);
-        }, 'POST', params);
+        }, 'POST', params, 'application/json');
     }
 
 
     /**
      * Update a subscription
-     * @param {String} subscription name
-     * @param {Object} subscription Object holding the publication information
-     * @param {Function} callback Callback function accepting the json return value
+     * @param {String} name - subscription name
+     * @param {Object} subscription - Object holding the subscription information
+     * @param {Function} callback - Callback function accepting the json return value
      */
     function updateSubscription(name, subscription, callback) {
         callback = callback || this._returnObj;
@@ -602,14 +604,14 @@ var FMEServer = ( function() {
         
         this._ajax(url, function(json){
             callback(json);
-        }, 'PUT', params);
+        }, 'PUT', params, 'application/json');
     }
 
 
     /**
      * Delete a subscription
-     * @param {String} subscription name
-     * @param {Function} callback Callback function accepting the json return value
+     * @param {String} name - subscription name
+     * @param {Function} callback - Callback function accepting the json return value
      */
     function deleteSubscription(name, callback) {
         callback = callback || this._returnObj;
@@ -624,7 +626,7 @@ var FMEServer = ( function() {
 
     /**
      * Get Subscriber Protocols
-     * @param {Function} callback Callback function accepting the json return value
+     * @param {Function} callback - Callback function accepting the json return value
      */
     function getSubscriberProtocols(callback) {
         callback = callback || this._returnObj;
@@ -638,8 +640,8 @@ var FMEServer = ( function() {
 
     /**
      * Query Subscriber Protocol
-     * @param {String} protocol name
-     * @param {Function} callback Callback function accepting the json return value
+     * @param {String} name - Protocol name
+     * @param {Function} callback - Callback function accepting the json return value
      */
     function querySubscriberProtocol(name, callback) {
         callback = callback || this._returnObj;
@@ -653,7 +655,7 @@ var FMEServer = ( function() {
 
     /**
      * Get Notification Topics
-     * @param {Function} callback Callback function accepting the json return value
+     * @param {Function} callback - Callback function accepting the json return value
      */
     function getNotificationTopics(callback) {
         callback = callback || this._returnObj;
@@ -666,8 +668,127 @@ var FMEServer = ( function() {
 
 
     /**
+     * Get Notification Topic
+     * @param {String} name - Topic name
+     * @param {Function} callback - Callback function accepting the json return value
+     */
+    function getNotificationTopic(name, callback) {
+        callback = callback || this._returnObj;
+        name = encodeURIComponent(name);
+        var url = this._URL('{{svr}}/fmerest/{{ver}}/notifications/topics' + name);
+        
+        this._ajax(url, function(json){
+            callback(json);
+        });
+    }
+
+
+    /**
+     * Create Topic
+     * @param {String} name - Topic name
+     * @param {String} description - Topic description
+     * @param {Function} callback - Callback function accepting the json return value
+     */
+    function createTopic(name, description, callback) {
+        callback = callback || this._returnObj;
+        name = encodeURIComponent(name).replace(/%20/g, '+');
+        description = encodeURIComponent(description).replace(/%20/g, '+');
+        var url = this._URL('{{svr}}/fmerest/{{ver}}/notifications/topics');
+        var params = "name=" + name + "&description=" + description;
+
+        this._ajax(url, function(json){
+            callback(json);
+        }, 'POST', params, 'application/x-www-form-urlencoded');
+    }
+
+
+    /**
+     * Update Topic Description
+     * @param {String} name - Topic name
+     * @param {String} description - Topic description
+     * @param {Function} callback - Callback function accepting the json return value
+     */
+    function updateTopic(name, description, callback) {
+        callback = callback || this._returnObj;
+        name = encodeURIComponent(name);
+        description = encodeURIComponent(description).replace(/%20/g, '+');
+        var url = this._URL('{{svr}}/fmerest/{{ver}}/notifications/topics' + name);
+        var params = "description=" + description;
+
+        this._ajax(url, function(json){
+            callback(json);
+        }, 'PUT', params, 'application/x-www-form-urlencoded');
+    }
+
+
+    /**
+     * Delete Topic
+     * @param {String} name topic name
+     * @param {Function} callback - Callback function accepting the json return value
+     */
+    function deleteTopic(name, callback) {
+        callback = callback || this._returnObj;
+        name = encodeURIComponent(name);
+        var url = this._URL('{{svr}}/fmerest/{{ver}}/notifications/topics' + name);
+
+        this._ajax(url, function(json){
+            callback(json);
+        }, 'DELETE', null, 'application/x-www-form-urlencoded');
+    }
+
+
+    /**
+     * Publish JSON or XML to a topic
+     * @param {String} name - Topic name
+     * @param {String} params - The data as a json string or xml string
+     * @param {String} type - The type of data (JSON or XML)
+     * @param {Function} callback - Callback function accepting the json return value
+     */
+    function publishToTopicStructured(name, params, type, callback) {
+        callback = callback || this._returnObj;
+        name = encodeURIComponent(name);
+        type = type.toLowerCase() || 'json';
+        var url = this._URL('{{svr}}/fmerest/{{ver}}/notifications/topics/' + name + '/message/map');
+        if (type == 'xml') {
+            type = 'application/xml';
+        } else {
+            type = 'application/json';
+            try {
+                params = JSON.parse(params);
+                params = JSON.stringify(params);
+            } catch(e) {
+                var message = { message : 'Unable to parse JSON' };
+                callback(message);
+                return false;
+            }
+        }
+
+        this._ajax(url, function(json){
+            callback(json);
+        }, 'POST', params, type);
+    }
+
+
+    /**
+     * Publish anything to a topic
+     * @param {String} name - Topic name
+     * @param {Object} or {String} params - The raw text data
+     * @param {Function} callback - Callback function accepting the json return value
+     */
+    function publishToTopic(name, params, callback) {
+        callback = callback || this._returnObj;
+        name = encodeURIComponent(name);
+        var url = this._URL('{{svr}}/fmerest/{{ver}}/notifications/topics/' + name + '/message/raw');
+
+        this._ajax(url, function(json){
+            callback(json);
+        }, 'POST', params, '*/*');
+    }
+
+
+    /**
      * Lookup user token
-     * @param {Function} callback Callback function accepting the json return value
+     * @param {Function} callback - Callback function accepting the json return value
      */
     function lookupToken(user, password, callback) {
         callback = callback || this._returnObj;
@@ -676,13 +797,13 @@ var FMEServer = ( function() {
         
         this._ajax(url, function(json){
             callback(json);
-        }, 'POST', params);
+        }, 'POST', params, 'application/x-www-form-urlencoded');
     }
 
 
     /**
      * Generate guest token
-     * @param {Function} callback Callback function accepting the json return value
+     * @param {Function} callback - Callback function accepting the json return value
      */
     function generateToken(user, password, count, unit, callback) {
         callback = callback || this._returnObj;
@@ -691,59 +812,63 @@ var FMEServer = ( function() {
         
         this._ajax(url, function(json){
             callback(json);
-        }, 'POST', params);
+        }, 'POST', params, 'application/x-www-form-urlencoded');
     }
 
 
     /**
      * Submit a Job to Run asynchronously
-     * @param {String} repository The repository on the FME Server
-     * @param {String} workspace The name of the workspace on FME Server, i.e. workspace.fmw
-     * @param {String} params Any workspace-specific parameter values
-     * @param {Function} callback Callback function accepting the json return value
+     * @param {String} repository - The repository on the FME Server
+     * @param {String} workspace - The name of the workspace on FME Server, i.e. workspace.fmw
+     * @param {String} params - Any workspace-specific parameter values
+     * @param {Function} callback - Callback function accepting the json return value
      */
     function submitJob(repository, workspace, params, callback) {
         callback = callback || this._returnObj;
         var url = this._URL('{{svr}}/fmerest/{{ver}}/transformations/commands/submit/' + repository + '/' + workspace);
+        params = JSON.stringify(params);
 
         this._ajax(url, function(json){
             callback(json);
-        }, 'POST', JSON.stringify(params));
+        }, 'POST', params, 'application/json');
     }
 
 
     /**
      * Submit a Job to Run Synchronously
-     * @param {String} repository The repository on the FME Server
-     * @param {String} workspace The name of the workspace on FME Server, i.e. workspace.fmw
-     * @param {String} params Any workspace-specific parameter values
-     * @param {Function} callback Callback function accepting the json return value
+     * @param {String} repository - The repository on the FME Server
+     * @param {String} workspace - The name of the workspace on FME Server, i.e. workspace.fmw
+     * @param {String} params - Any workspace-specific parameter values
+     * @param {Function} callback - Callback function accepting the json return value
      */
     function submitSyncJob(repository, workspace, params, callback) {
         callback = callback || this._returnObj;
         var url = this._URL('{{svr}}/fmerest/{{ver}}/transformations/commands/transact/' + repository + '/' + workspace);
-        
+        params = JSON.stringify(params);
+
         this._ajax(url, function(json){
             callback(json);
-        }, 'POST', JSON.stringify(params));
+        }, 'POST', params, 'application/json');
     }
 
 
     /**
      * Submit a custom REST request directly to the API
-     * @param {String} url Full url of the REST call including the server
-     * @param {String} type The request type, i.e. GET, POST, PUSH, ...
-     * @param {Function} callback Callback function accepting the json return value
-     * @param {String} params Any parameter values required by the API (Optional)
+     * @param {String} url - Full url of the REST call including the server
+     * @param {String} type - The request type, i.e. GET, POST, PUSH, ...
+     * @param {Function} callback - Callback function accepting the json return value
+     * @param {String} params - Any parameter values required by the API (Optional)
+     * @param {String} ctyp - The Content type of the data being sent, ex: 'application/json'
      */
-    function customRequest(url, type, callback, params) {
+    function customRequest(url, type, callback, params, ctyp) {
         callback = callback || this._returnObj;
         params = params || null;
         type = type.toUpperCase();
+        ctyp = ctyp || null;
 
         this._ajax(url, function(json){
             callback(json);
-        }, type, params);
+        }, type, params, ctyp);
     }
 
 
@@ -779,6 +904,12 @@ var FMEServer = ( function() {
         fme.prototype.getSubscriberProtocols = getSubscriberProtocols;
         fme.prototype.querySubscriberProtocol = querySubscriberProtocol;
         fme.prototype.getNotificationTopics = getNotificationTopics;
+        fme.prototype.getNotificationTopic = getNotificationTopic;
+        fme.prototype.publishToTopicStructured = publishToTopicStructured;
+        fme.prototype.publishToTopic = publishToTopic;
+        fme.prototype.createTopic = createTopic;
+        fme.prototype.updateTopic = updateTopic;
+        fme.prototype.deleteTopic = deleteTopic;
         fme.prototype.lookupToken = lookupToken;
         fme.prototype.generateToken = generateToken;
         fme.prototype.submitJob = submitJob;
