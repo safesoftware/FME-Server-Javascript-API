@@ -120,8 +120,8 @@ var FMEServer = ( function() {
         /**
          * Changes http:// to https:// if SSL is required
          */
-        if (this._config('server').ssl) {
-            config.server = config.server.replace('http://','https://');
+        if (this._config('ssl')) {
+            config.server = this._config('server').replace('http://','https://');
         }
 
         /**
