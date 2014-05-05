@@ -111,6 +111,13 @@ var FMEServer = ( function() {
         };
 
         /**
+         * Remove trailing slash from sever if present
+         */
+        if (this._config('server').charAt(this._config('server').length - 1) == '/') {
+            config.server = this._config('server').substr(0, this._config('server').length - 1);
+        }
+
+        /**
          * Converts server host to URL
          */
         if (this._config('server').substring(0, 4) != 'http') {
@@ -129,13 +136,7 @@ var FMEServer = ( function() {
          */
         var stdPorts = ['80', '443'];
         if (stdPorts.indexOf(this._config('port')) === -1) {
-            var port_URL = this._config('server').split('://');
-            if (this._config('ssl')) {
-                port_URL = port_URL[0] + '://' + port_URL[1] + ':' + this._config('port');
-            } else {
-                port_URL = port_URL[0] + ':' + this._config('port') + '//' + port_URL[1];
-            }
-            config.server = port_URL;
+            config.server = this._config('server') + ':' + this._config('port');
         }
 
         /**
@@ -154,11 +155,13 @@ var FMEServer = ( function() {
          * @param {String} rtyp - Type of request ex: PUT, GET(Default)
          * @param {String} params - The json or name=value pair string or parameters
          * @param {String} ctyp - Content type as a string (optional)
+         * @param {String} atyp - Accept type as a string (optional)
          */
-        this._ajax = function(url, callback, rtyp, params, ctyp) {
+        this._ajax = function(url, callback, rtyp, params, ctyp, atyp) {
             rtyp = rtyp || 'GET';
             params = params || null;
             ctyp = ctyp || null;
+            atyp = atyp || this._config('accept');
 
             var req = new XMLHttpRequest();
             
@@ -169,25 +172,39 @@ var FMEServer = ( function() {
             }
 
             req.open(rtyp, url, true);
-            req.setRequestHeader('Accept', this._config('accept'));
 
-            if(ctyp !== null) {
+            if(atyp !== null) {
+                req.setRequestHeader('Accept', atyp);
+            }
+
+            if(ctyp !== null && ctyp != 'attachment') {
                 req.setRequestHeader('Content-type', ctyp);
+            }
+
+            if(ctyp == 'attachment') {
+                req.setRequestHeader('Content-type', 'application/octet-stream');
+                req.setRequestHeader('Content-Disposition', 'attachment; filename="'+params.name+'"');
+                params = params.contents;
             }
 
             req.onreadystatechange = function() {
                 var done = 4;
                 
                 if (req.readyState == done) {
-                    var resp = req.responseText;
-                    if (resp.indexOf('{') != -1) {
+                    var resp;
+                    try {
+                        resp = req.responseText;
+                        if (resp.length === 0 && req.status == 204) {
+                            resp = '{ "delete" : "true" }';
+                        } else if (resp.length === 0 && req.status == 202) {
+                            resp = '{ "value" : "true" }';
+                        }
                         resp = JSON.parse(resp);
-                    } else if (resp.length === 0 && req.status == 204) {
-                        resp = { 'delete' : true };
-                    } else if (resp.length === 0 && req.status == 202) {
-                        resp = { 'value' : true };
+                    } catch (e) {
+                        resp = req.response;
+                    } finally {
+                        callback(resp);
                     }
-                    callback(resp);
                 }
             };
             req.send(params);
@@ -853,6 +870,76 @@ var FMEServer = ( function() {
 
 
     /**
+     * Get a List of All Shared Resources
+     * @param {Function} callback - Callback function accepting the json return value
+     */
+    function getResources(callback) {
+        callback = callback || this._returnObj;
+        var url = this._URL('{{svr}}/fmerest/{{ver}}/resources');
+
+        this._ajax(url, function(json){
+            callback(json);
+        });
+    }
+
+
+    /**
+     * Get Resource Details
+     * @param {String} resource - The resource name
+     * @param {String} path - The file path within the resource on the server
+     * @param {Function} callback - Callback function accepting the json return value
+     */
+    function getResourceDetails(resource, path, callback) {
+        callback = callback || this._returnObj;
+        path = encodeURIComponent(path).replace(/%2F/g, '/');
+        var url = this._URL('{{svr}}/fmerest/{{ver}}/resources/' + resource + '/filesys' + path);
+
+        this._ajax(url, function(json){
+            callback(json);
+        });
+    }
+
+
+    /**
+     * Download Resource File
+     * @param {String} resource - The resource name
+     * @param {String} path - The resource file path on the server
+     */
+    function downloadResourceFile(resource, path) {
+        path = encodeURIComponent(path).replace(/%2F/g, '/');
+        var url = this._URL('{{svr}}/fmerest/{{ver}}/resources/' + resource + '/filesys' + path + '?accept=contents');
+        
+        var iframe = document.createElement('iframe');
+        iframe.style.display = 'none';
+        document.body.appendChild(iframe);
+        iframe.src = url + '&token=' + this._config('token');
+    }
+
+
+    /**
+     * Upload Resource File
+     * @param {String} resource - The resource name
+     * @param {String} path - The file path within the resource on the server
+     * @param {Object} params - The custom file input object { name : name, contents : contents }
+     * @param {Function} callback - Callback function accepting the json return value
+     * @param {Boolean} overwrite - Overwrite files, true or false(default)
+     * @param {String} folders - Create folders from path, true or false(default)
+     */
+    function uploadResourceFile(resource, path, params, callback, overwrite, folders) {
+        callback = callback || this._returnObj;
+        overwrite = overwrite || false;
+        folders = folders || false;
+        path = encodeURIComponent(path).replace(/%2F/g, '/');
+        var url = this._URL('{{svr}}/fmerest/{{ver}}/resources/' + resource + '/filesys' + path);
+        url = url + '?createDirectories=' + folders + '&overwrite=' + overwrite + '&type=FILE';
+
+        this._ajax(url, function(json){
+            callback(json);
+        }, 'POST', params, 'attachment');
+    }
+
+
+    /**
      * Submit a custom REST request directly to the API
      * @param {String} url - Full url of the REST call including the server
      * @param {String} type - The request type, i.e. GET, POST, PUSH, ...
@@ -914,6 +1001,10 @@ var FMEServer = ( function() {
         fme.prototype.generateToken = generateToken;
         fme.prototype.submitJob = submitJob;
         fme.prototype.submitSyncJob = submitSyncJob;
+        fme.prototype.getResources = getResources;
+        fme.prototype.getResourceDetails = getResourceDetails;
+        fme.prototype.downloadResourceFile = downloadResourceFile;
+        fme.prototype.uploadResourceFile = uploadResourceFile;
         fme.prototype.customRequest = customRequest;
     }
 
