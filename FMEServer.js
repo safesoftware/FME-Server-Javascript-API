@@ -226,20 +226,20 @@ var FMEServer = ( function() {
 
 
     /**
-     * Gets the current session id from FME Server. You can use this to get the path to any
+     * Gets the current session from FME Server. You can use this to get the path to any
      * files added through the file upload service.
      * @param {String} repository - The repository on the FME Server
      * @param {String} workspace - The name of the workspace on FME Server, i.e. workspace.fmw
      * @param {Function} callback - Callback function accepting sessionID as a string
      */
-    function getSessionID(repository, workspace, callback){
+    function getSession(repository, workspace, callback){
         callback = callback || this._returnObj;
         var url = this._URL('{{svr}}/fmedataupload/' + repository + '/' + workspace);
         var params = 'opt_extractarchive=false&opt_pathlevel=3&opt_fullpath=true';
 
         this._ajax(url, function(json) {
-            callback(json.serviceResponse.session);
-        }, params, 'application/x-www-form-urlencoded');
+            callback(json);
+        }, 'POST', params, 'application/x-www-form-urlencoded');
     }
 
 
@@ -293,6 +293,117 @@ var FMEServer = ( function() {
 
 
     /**
+     * Upload file(s) using data upload legacy service
+     * @param {String} repository - The repository on the FME Server
+     * @param {String} workspace - The name of the workspace on FME Server, i.e. workspace.fmw
+     * @param {Object} files - The form file object
+     * @param {String} jsid - The current session id
+     * @param {Function} callback - Callback function accepting the json return value
+     */
+    function dataUpload(repository, workspace, files, jsid, callback) {
+        callback = callback || this._returnObj;
+        jsid = jsid || null;
+        var url = this._URL('{{svr}}/fmedataupload/' + repository + '/' + workspace);
+        if(jsid !== null) {
+            url += ';jsessionid=' + jsid;
+        }
+
+        if(!FormData) { // IE9 and Older Browsers that don't support FormData
+            
+            // Random number for form and frame id
+            var random = parseInt(Math.random() * 100000000);
+            
+            // Create the invisible iframe for the form target
+            var iframe = document.createElement('iframe');
+            iframe.id = random + '-frame';
+            iframe.name = random;
+            iframe.style.display = 'none';
+            document.body.appendChild(iframe);
+
+            // Create the form with the proper settings and set the target to the iframe
+            var form = document.createElement('form');
+            form.action = url;
+            form.method = 'POST';
+            form.enctype = 'multipart/form-data';
+
+            // Clone the file input and set it's files
+            var input = files.cloneNode(true);
+            input.name = "files[]";
+            input.files = files.files;
+            form.appendChild(input);
+
+            // Finish styling and submit the form
+            form.target = random;
+            form.id = random + '-form';
+            form.style.display = 'none';
+            document.body.appendChild(form);
+            form.submit();
+
+            // Send feedback for client methods
+            callback({ submit : true, id : random });
+
+        } else { // New HTML5 Method for browsers that support FormData
+            
+            // Chrome 7+, Firefox 4.0 (2.0), IE 10+, Opera 12+, Safari 5+
+            var params = new FormData();
+            
+            // Loop through, support for multiple files
+            for(var i = 0; i < files.files.length; i++) {
+                params.append('files[]', files.files[i]);
+            }
+
+            this._ajax(url, function(json){
+                callback(json);
+            }, 'POST', params);
+        }
+    }
+
+
+    /**
+     * Get data upload files for the session
+     * @param {String} repository - The repository on the FME Server
+     * @param {String} workspace - The name of the workspace on FME Server, i.e. workspace.fmw
+     * @param {String} jsid - The current session id
+     * @param {Function} callback - Callback function accepting the json return value
+     */
+    function getDataUploads(repository, workspace, jsid, callback) {
+        callback = callback || this._returnObj;
+        jsid = jsid || null;
+        var url = this._URL('{{svr}}/fmedataupload/' + repository + '/' + workspace + ';jsessionid=' + jsid);
+        
+        this._ajax(url, function(json){
+            callback(json);
+        });
+    }
+    
+
+    /**
+     * Runs a workspace with user uploaded session data
+     * @param {String} path - The server path for the session
+     * @param {String} params - The server path for the session
+     * @param {Function} callback - Callback function accepting the json return value
+     */
+    function runWorkspaceWithData(path, params, callback) {
+        callback = callback || this._returnObj;
+        path = path || null;
+        var url = this._URL('{{svr}}/fmedatadownload/' + repository + '/' + workspace + '?');
+        var files = params.files;
+        var extra = params.params;
+        params = params.filename + '=%22%22';
+
+        for(var f in files){
+            params += path + '/' + files[f].name + '%22%20%22';
+        }
+
+        params += '&' + extra + '&opt_responseformat=json';
+        
+        this._ajax(url+params, function(json){
+            callback(json);
+        });
+    }
+
+
+    /**
      * Retrieves all available repositories on the FME Server
      * @param {Function} callback - Callback function accepting the json return value
      */
@@ -336,6 +447,76 @@ var FMEServer = ( function() {
         this._ajax(url, function(json){
             callback(json);
         });
+    }
+
+
+    /**
+     * Generates a standard workspace parameters form
+     * @param {String} id - The container id to place the form elements
+     * @param {Object} json - The json object representing the form parameters
+     */
+    function generateFormItems(id, json) {
+        var form = document.getElementById(id);
+        // Loop through the JSON object and build the form
+        for(var i = 0; i < json.length; i++) {
+            var param = json[i];
+            var label = document.createElement("label");
+            label.innerHTML = param.description;
+            form.appendChild(label);
+            var choice;
+            if(param.type === "FILE_OR_URL") {
+                choice = document.createElement("input");
+                choice.type = "file";
+                choice.name = param.name;
+            } else if(param.type === "LISTBOX") {
+                choice = document.createElement("div");
+                var options = param.listOptions;
+                for(var a = 0; a < options.length; a++) {
+                    var option = options[a];
+                    var checkbox = document.createElement("input");
+                    checkbox.type = "checkbox";
+                    checkbox.value = option.value;
+                    checkbox.name = param.name;
+                    choice.appendChild(checkbox);
+                    var caption = document.createElement("label");
+                    caption.innerHTML = option.caption;
+                    choice.appendChild(caption);
+                }
+            } else if(param.type === "LOOKUP_CHOICE" ||
+                      param.type === "STRING_OR_CHOICE" ||
+                      param.type === "CHOICE")
+            {
+                choice = document.createElement("select");
+                choice.name = param.name;
+                var options = param.listOptions;
+                for(var a = 0; a < options.length; a++) {
+                    var option = options[a];
+                    var optionItem = document.createElement("option");
+                    optionItem.innerHTML = option.caption;
+                    optionItem.value = option.value;
+                    choice.appendChild(optionItem);
+                }
+            } else if(param.type  === "TEXT_EDIT") {
+                choice = document.createElement("textarea");
+                choice.name = param.name;
+            } else if(param.type  == "INTEGER") {
+                choice = document.createElement("input");
+                choice.type = "number";
+                choice.name = param.name;
+            } else if(param.type  == "PASSWORD") {
+                choice = document.createElement("input");
+                choice.type = "password";
+                choice.name = param.name;
+            } else {
+                choice = document.createElement("input");
+                choice.value = param.defaultValue;
+                choice.name = param.name;
+            }
+
+            form.appendChild(choice);
+            var br = document.createElement("br");
+            form.appendChild(br);
+        }
     }
 
 
@@ -901,6 +1082,23 @@ var FMEServer = ( function() {
 
 
     /**
+     * Delete Resource
+     * @param {String} resource - The resource name
+     * @param {String} path - The file path within the resource on the server
+     * @param {Function} callback - Callback function accepting the json return value
+     */
+    function deleteResource(resource, path, callback) {
+        callback = callback || this._returnObj;
+        path = encodeURIComponent(path).replace(/%2F/g, '/');
+        var url = this._URL('{{svr}}/fmerest/{{ver}}/resources/' + resource + '/filesys' + path);
+
+        this._ajax(url, function(json){
+            callback(json);
+        }, 'DELETE');
+    }
+
+
+    /**
      * Download Resource File
      * @param {String} resource - The resource name
      * @param {String} path - The resource file path on the server
@@ -963,12 +1161,16 @@ var FMEServer = ( function() {
      * Attach all public methods to the FMEServer Connection Object
      */
     function _init() {
-        fme.prototype.getSessionID = getSessionID;
+        fme.prototype.getSession = getSession
         fme.prototype.getWebSocketConnection = getWebSocketConnection;
         fme.prototype.runDataDownload = runDataDownload;
+        fme.prototype.dataUpload = dataUpload;
+        fme.prototype.getDataUploads = getDataUploads;
+        fme.prototype.runWorkspaceWithData = runWorkspaceWithData;
         fme.prototype.getRepositories = getRepositories;
         fme.prototype.getRepositoryItems = getRepositoryItems;
         fme.prototype.getWorkspaceParameters = getWorkspaceParameters;
+        fme.prototype.generateFormItems = generateFormItems;
         fme.prototype.getSchedules = getSchedules;
         fme.prototype.getScheduleItem = getScheduleItem;
         fme.prototype.enableScheduleItem = enableScheduleItem;
@@ -1003,6 +1205,7 @@ var FMEServer = ( function() {
         fme.prototype.submitSyncJob = submitSyncJob;
         fme.prototype.getResources = getResources;
         fme.prototype.getResourceDetails = getResourceDetails;
+        fme.prototype.deleteResource = deleteResource;
         fme.prototype.downloadResourceFile = downloadResourceFile;
         fme.prototype.uploadResourceFile = uploadResourceFile;
         fme.prototype.customRequest = customRequest;
