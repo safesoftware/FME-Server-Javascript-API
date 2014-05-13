@@ -52,7 +52,12 @@ var FMECloud = ( function() {
          * @return null - if not valid
          */
         if (token == undefined) {
-            console.log( 'FMECloud.js Error.  You did not specify a token in your configuration paramaters.' );
+            var error = 'FMECloud.js Error.  You did not specify a token in your configuration paramaters.';
+            if (window.console && console.log) {
+                console.log(error);
+            } else {
+                alert(error);
+            }
             return null;
         }
 

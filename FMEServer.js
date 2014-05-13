@@ -65,11 +65,21 @@ var FMEServer = ( function() {
          * Check for the server url and the token parameters - required for connection
          * @return null - if not valid
          */
-        if (server == undefined || (typeof server == 'object' && server.server == undefined)) {
-            console.log( 'FMEServer.js Error.  You did not specify a server URL in your configuration paramaters.' );
+        if (server === undefined || (typeof server === 'object' && server.server === undefined)) {
+            var error = 'FMEServer.js Error.  You did not specify a server URL in your configuration paramaters.';
+            if (window.console && console.log) {
+                console.log(error);
+            } else {
+                alert(error);
+            }
             return null;
-        } else if (token == undefined && (typeof server == 'object' && server.token == undefined)) {
-            console.log( 'FMEServer.js Error.  You did not specify a token in your configuration paramaters.' );
+        } else if (token === undefined && (typeof server === 'object' && server.token === undefined)) {
+            var error = 'FMEServer.js Error.  You did not specify a token in your configuration paramaters.';
+            if (window.console && console.log) {
+                console.log(error);
+            } else {
+                alert(error);
+            }
             return null;
         }
 
