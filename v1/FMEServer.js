@@ -84,6 +84,23 @@ var FMEServer = ( function() {
         }
 
         /**
+         * Add indexOf and trim method for Array's in older browsers
+         */
+        if (!Array.prototype.indexOf) {
+            Array.prototype.indexOf = function(obj, start) {
+                for (var i = (start || 0), j = this.length; i < j; i++) {
+                    if (this[i] === obj) { return i; }
+                }
+                return -1;
+            }
+        }
+        if (typeof String.prototype.trim !== 'function') {
+            String.prototype.trim = function() {
+                return this.replace(/^\s+|\s+$/g, ''); 
+            }
+        }
+
+        /**
          * Configuration object, holds instance configuration
          */
         var config = { version : 'v2' };
@@ -98,6 +115,7 @@ var FMEServer = ( function() {
             config.detail =  server.detail || 'high';
             config.port = server.port || '80';
             config.ssl = server.ssl || false;
+            config.xdomain = false;
         } else {
             config.server = server;
             config.token = token;
@@ -105,6 +123,7 @@ var FMEServer = ( function() {
             config.detail =  detail || 'high';
             config.port = port || '80';
             config.ssl = ssl || false;
+            config.xdomain = false;
         }
 
         /**
@@ -142,6 +161,17 @@ var FMEServer = ( function() {
         }
 
         /**
+         * Set IE8 / IE9 CORS mode if required
+         */
+        if (location.host != this._config('server').split('//')[1].split('/')[0] &&
+            navigator.appName == 'Microsoft Internet Explorer' &&
+            (navigator.appVersion.indexOf('MSIE 9') !== -1 || navigator.appVersion.indexOf('MSIE 8') !== -1)
+           )
+        {
+            config.xdomain = true;
+        }
+
+        /**
          * Attaches port to server URL if not a standard port
          */
         var stdPorts = ['80', '443'];
@@ -172,8 +202,6 @@ var FMEServer = ( function() {
             params = params || null;
             ctyp = ctyp || null;
             atyp = atyp || this._config('accept');
-
-            var req = new XMLHttpRequest();
             
             if (url.indexOf('?') != -1) {
                 url += '&detail=' + this._config('detail') + '&token=' + this._config('token');
@@ -181,43 +209,76 @@ var FMEServer = ( function() {
                 url += '?detail=' + this._config('detail') + '&token=' + this._config('token');
             }
 
-            req.open(rtyp, url, true);
+            var req;
 
-            if(atyp !== null) {
-                req.setRequestHeader('Accept', atyp);
-            }
-
-            if(ctyp !== null && ctyp != 'attachment') {
-                req.setRequestHeader('Content-type', ctyp);
-            }
-
-            if(ctyp == 'attachment') {
-                req.setRequestHeader('Content-type', 'application/octet-stream');
-                req.setRequestHeader('Content-Disposition', 'attachment; filename="'+params.name+'"');
-                params = params.contents;
-            }
-
-            req.onreadystatechange = function() {
-                var done = 4;
-                
-                if (req.readyState == done) {
-                    var resp;
-                    try {
+            if (this._config('xdomain')) {
+                if (rtyp == 'GET') {
+                    req = new XDomainRequest();
+                    req.open(rtyp, url);
+                    req.onload = function() {
+                        var resp;
                         resp = req.responseText;
-                        if (resp.length === 0 && req.status == 204) {
-                            resp = '{ "delete" : "true" }';
-                        } else if (resp.length === 0 && req.status == 202) {
-                            resp = '{ "value" : "true" }';
+                        try {
+                            resp = JSON.parse(resp);
+                        } catch (e) {
+                            // Not a JSON response
+                        } finally {
+                            callback(resp);
                         }
-                        resp = JSON.parse(resp);
-                    } catch (e) {
-                        resp = req.response;
-                    } finally {
-                        callback(resp);
-                    }
+                    };
+                    req.send();
+                } else {
+                    var error = {
+                        error : 'FMEServer.js Error.  IE8 and IE9 Only support CORS requests through GET methods. Only partial functionality is available.',
+                        url : url,
+                        request_type : rtyp,
+                        parameters : params,
+                        serviceResponse : {
+                            message : "CORS Error",
+                            url : "/getting-started/cross-domain-requests"
+                        }
+                    };
+                    callback(error);
                 }
-            };
-            req.send(params);
+            } else {
+                req = new XMLHttpRequest();
+                req.open(rtyp, url, true);
+
+                if (atyp !== null) {
+                    req.setRequestHeader('Accept', atyp);
+                }
+
+                if (ctyp !== null && ctyp != 'attachment') {
+                    req.setRequestHeader('Content-type', ctyp);
+                }
+
+                if (ctyp == 'attachment') {
+                    req.setRequestHeader('Content-type', 'application/octet-stream');
+                    req.setRequestHeader('Content-Disposition', 'attachment; filename="'+params.name+'"');
+                    params = params.contents;
+                }
+
+                req.onreadystatechange = function() {
+                    var done = 4;
+                    if (req.readyState == done) {
+                        var resp;
+                        try {
+                            resp = req.responseText;
+                            if (resp.length === 0 && req.status == 204) {
+                                resp = '{ "delete" : "true" }';
+                            } else if (resp.length === 0 && req.status == 202) {
+                                resp = '{ "value" : "true" }';
+                            }
+                            resp = JSON.parse(resp);
+                        } catch (e) {
+                            resp = req.response;
+                        } finally {
+                            callback(resp);
+                        }
+                    }
+                };
+                req.send(params);
+            }
         };
         
         /**

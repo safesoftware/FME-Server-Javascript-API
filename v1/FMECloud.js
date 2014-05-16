@@ -54,11 +54,28 @@ var FMECloud = ( function() {
         if (token == undefined) {
             var error = 'FMECloud.js Error.  You did not specify a token in your configuration paramaters.';
             if (window.console && console.log) {
-                console.log(error);
+                console.log( error );
             } else {
-                alert(error);
+                alert( error );
             }
             return null;
+        }
+
+        /**
+         * Add indexOf and trim method for Array's in older browsers
+         */
+        if (!Array.prototype.indexOf) {
+            Array.prototype.indexOf = function(obj, start) {
+                for (var i = (start || 0), j = this.length; i < j; i++) {
+                    if (this[i] === obj) { return i; }
+                }
+                return -1;
+            }
+        }
+        if (typeof String.prototype.trim !== 'function') {
+            String.prototype.trim = function() {
+                return this.replace(/^\s+|\s+$/g, ''); 
+            }
         }
 
         /**
@@ -67,8 +84,20 @@ var FMECloud = ( function() {
         var config = { 
             version : 'v1',
             server : 'https://api.fmecloud.com',
-            token : token
+            token : token,
+            xdomain : false
         };
+
+        /**
+         * Set IE8 / IE9 CORS mode if required
+         */
+        if (location.host != this._config('server').split('//')[1].split('/')[0] &&
+            navigator.appName == 'Microsoft Internet Explorer' &&
+            (navigator.appVersion.indexOf('MSIE 9') !== -1 || navigator.appVersion.indexOf('MSIE 8') !== -1)
+           )
+        {
+            config.xdomain = true;
+        }
 
         /**
          * Get Configuration Method
@@ -82,13 +111,6 @@ var FMECloud = ( function() {
             }
             return config;
         };
-
-        /**
-         * Converts server host to URL
-         */
-        if (this._config('server').substring(0, 4) != 'http') {
-            config.server = 'https://' + this._config('server');
-        }
 
         /**
          * Return Object Method.
@@ -114,37 +136,53 @@ var FMECloud = ( function() {
             ctyp = ctyp || null;
             atyp = atyp || 'json';
 
-            var req = new XMLHttpRequest();
+            var req;
 
-            req.open(rtyp, url, true);
-            req.setRequestHeader('Accept', atyp);
-            req.setRequestHeader('Authorization', 'Bearer ' + this._config('token'));
-
-            if(ctyp !== null) {
-                req.setRequestHeader('Content-type', ctyp);
-            }
-
-            req.onreadystatechange = function() {
-                var done = 4;
-                
-                if (req.readyState == done) {
-                    var resp;
-                    try {
-                        resp = req.responseText;
-                        if (resp.length === 0 && req.status == 204) {
-                            resp = '{ "delete" : "true" }';
-                        } else if (resp.length === 0 && req.status == 202) {
-                            resp = '{ "value" : "true" }';
-                        }
-                        resp = JSON.parse(resp);
-                    } catch (e) {
-                        resp = req.response;
-                    } finally {
-                        callback(resp);
+            if (this._config('xdomain')) {
+                var error = {
+                    error : 'FMECloud.js Error.  IE8 and IE9 do not support the custom headers required for Cloud CORS requests.  Browser Not Supported.',
+                    url : url,
+                    request_type : rtyp,
+                    parameters : params,
+                    serviceResponse : {
+                        message : "CORS Error",
+                        url : "/getting-started/cross-domain-requests"
                     }
+                };
+                callback(error);
+            } else {
+                var req = new XMLHttpRequest();
+
+                req.open(rtyp, url, true);
+                req.setRequestHeader('Accept', atyp);
+                req.setRequestHeader('Authorization', 'Bearer ' + this._config('token'));
+
+                if(ctyp !== null) {
+                    req.setRequestHeader('Content-type', ctyp);
                 }
-            };
-            req.send(params);
+
+                req.onreadystatechange = function() {
+                    var done = 4;
+                    
+                    if (req.readyState == done) {
+                        var resp;
+                        try {
+                            resp = req.responseText;
+                            if (resp.length === 0 && req.status == 204) {
+                                resp = '{ "delete" : "true" }';
+                            } else if (resp.length === 0 && req.status == 202) {
+                                resp = '{ "value" : "true" }';
+                            }
+                            resp = JSON.parse(resp);
+                        } catch (e) {
+                            resp = req.response;
+                        } finally {
+                            callback(resp);
+                        }
+                    }
+                };
+                req.send(params);
+            }
         };
         
         /**
