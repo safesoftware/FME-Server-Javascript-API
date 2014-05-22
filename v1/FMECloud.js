@@ -89,17 +89,6 @@ var FMECloud = ( function() {
         };
 
         /**
-         * Set IE8 / IE9 CORS mode if required
-         */
-        if (location.host != this._config('server').split('//')[1].split('/')[0] &&
-            navigator.appName == 'Microsoft Internet Explorer' &&
-            (navigator.appVersion.indexOf('MSIE 9') !== -1 || navigator.appVersion.indexOf('MSIE 8') !== -1)
-           )
-        {
-            config.xdomain = true;
-        }
-
-        /**
          * Get Configuration Method
          * @param {String} name - Name of setting
          * @return {String} - individual parameter, or {Object} - config
@@ -111,6 +100,17 @@ var FMECloud = ( function() {
             }
             return config;
         };
+
+        /**
+         * Set IE8 / IE9 CORS mode if required
+         */
+        if (location.host != this._config('server').split('//')[1].split('/')[0] &&
+            navigator.appName == 'Microsoft Internet Explorer' &&
+            (navigator.appVersion.indexOf('MSIE 9') !== -1 || navigator.appVersion.indexOf('MSIE 8') !== -1)
+           )
+        {
+            config.xdomain = true;
+        }
 
         /**
          * Return Object Method.
