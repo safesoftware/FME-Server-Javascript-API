@@ -35,7 +35,7 @@
 /**
  * FME Server connection object
  * @author Safe Software
- * @version 3.0
+ * @version 1.0
  * @this FMEServer
  * @return {FMEServer} fme - FME Server connection object
  */

@@ -35,7 +35,7 @@
 /**
  * FME Cloud connection object
  * @author Safe Software
- * @version 3.0
+ * @version 1.0
  * @this FMECloud
  * @return {FMECloud} fme - FME Cloud connection object
  */
