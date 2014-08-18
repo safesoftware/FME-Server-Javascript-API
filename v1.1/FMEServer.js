@@ -412,13 +412,14 @@ var FMEServer = ( function() {
         /**
          * Runs a workspace with user uploaded session data
          * @param {String} path - The server path for the session
-         * @param {String} params - The server path for the session
+         * @param {Object} params - The parameter object for running the workspace
          * @param {Function} callback - Callback function accepting the json return value
          */
         runWorkspaceWithData : function(path, params, callback) {
             callback = callback || null;
             path = path || null;
-            var url = buildURL('{{svr}}/fmedatadownload/' + repository + '/' + workspace + '?');
+            var service = params.service || 'fmedatadownload';
+            var url = buildURL('{{svr}}/' + service + '/' + repository + '/' + workspace + '?');
             var files = params.files;
             var extra = params.params;
             params = params.filename + '=%22%22';
