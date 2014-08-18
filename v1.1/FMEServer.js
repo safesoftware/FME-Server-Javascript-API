@@ -412,13 +412,14 @@ var FMEServer = ( function() {
         /**
          * Runs a workspace with user uploaded session data
          * @param {String} path - The server path for the session
-         * @param {String} params - The server path for the session
+         * @param {Object} params - The parameter object for running the workspace
          * @param {Function} callback - Callback function accepting the json return value
          */
         runWorkspaceWithData : function(path, params, callback) {
             callback = callback || null;
             path = path || null;
-            var url = buildURL('{{svr}}/fmedatadownload/' + repository + '/' + workspace + '?');
+            var service = params.service || 'fmedatadownload';
+            var url = buildURL('{{svr}}/' + service + '/' + repository + '/' + workspace + '?');
             var files = params.files;
             var extra = params.params;
             params = params.filename + '=%22%22';
@@ -465,72 +466,89 @@ var FMEServer = ( function() {
         },
 
         /**
+         * Retrieves a single published param for a given workspace
+         * @param {String} repository - The repository on the FME Server
+         * @param {String} workspace - The name of the workspace on FME Server, i.e. workspace.fmw
+         * @param {String} parameter - The name of the workspace parameter
+         * @param {Function} callback - Callback function accepting the json return value
+         */
+        getWorkspaceParameter : function(repository, workspace, parameter, callback) {
+            callback = callback || null;
+            var url = buildURL('{{svr}}/fmerest/{{ver}}/repositories/' + repository + '/items/' + workspace + '/parameters/' + parameter);
+            ajax(url, callback);
+        },
+
+        /**
          * Generates a standard workspace parameters form
          * @param {String} id - The container id to place the form elements
          * @param {Object} json - The json object representing the form parameters
+         * @param {Array} items - (Optional) The array of parameter names you wish to expose, by default all parameters are exposed
          */
-        generateFormItems : function(id, json) {
+        generateFormItems : function(id, json, items) {
             var form = document.getElementById(id);
             // Loop through the JSON object and build the form
             for(var i = 0; i < json.length; i++) {
                 var param = json[i];
-                var span = document.createElement("span");
-                span.setAttribute("class", param.name + " fmes-form-component");
-                var label = document.createElement("label");
-                label.innerHTML = param.description;
-                span.appendChild(label);
-                var choice;
-                if(param.type === "FILE_OR_URL") {
-                    choice = document.createElement("input");
-                    choice.type = "file";
-                    choice.name = param.name;
-                } else if(param.type === "LISTBOX") {
-                    choice = document.createElement("div");
-                    var options = param.listOptions;
-                    for(var a = 0; a < options.length; a++) {
-                        var option = options[a];
-                        var checkbox = document.createElement("input");
-                        checkbox.type = "checkbox";
-                        checkbox.value = option.value;
-                        checkbox.name = param.name;
-                        choice.appendChild(checkbox);
-                        var caption = document.createElement("label");
-                        caption.innerHTML = option.caption;
-                        choice.appendChild(caption);
+                if (!items || items.indexOf(param.name) !== -1) {
+                    var span = document.createElement("span");
+                    span.setAttribute("class", param.name + " fmes-form-component");
+                    var label = document.createElement("label");
+                    label.innerHTML = param.description;
+                    span.appendChild(label);
+                    var choice;
+                    if(param.type === "FILE_OR_URL") {
+                        choice = document.createElement("input");
+                        choice.type = "file";
+                        choice.name = param.name;
+                    } else if(param.type === "LISTBOX") {
+                        choice = document.createElement("div");
+                        var options = param.listOptions;
+                        for(var a = 0; a < options.length; a++) {
+                            var option = options[a];
+                            var checkbox = document.createElement("input");
+                            checkbox.type = "checkbox";
+                            checkbox.value = option.value;
+                            checkbox.name = param.name;
+                            choice.appendChild(checkbox);
+                            var caption = document.createElement("label");
+                            caption.innerHTML = option.caption;
+                            choice.appendChild(caption);
+                        }
+                    } else if(param.type === "LOOKUP_CHOICE" ||
+                              param.type === "LOOKUP_LISTBOX" ||
+                              param.type === "STRING_OR_CHOICE" ||
+                              param.type === "CHOICE")
+                    {
+                        choice = document.createElement("select");
+                        choice.name = param.name;
+                        var options = param.listOptions;
+                        for(var a = 0; a < options.length; a++) {
+                            var option = options[a];
+                            var optionItem = document.createElement("option");
+                            optionItem.innerHTML = option.caption;
+                            optionItem.value = option.value;
+                            choice.appendChild(optionItem);
+                        }
+                    } else if(param.type  === "TEXT_EDIT") {
+                        choice = document.createElement("textarea");
+                        choice.name = param.name;
+                    } else if(param.type  == "INTEGER") {
+                        choice = document.createElement("input");
+                        choice.type = "number";
+                        choice.name = param.name;
+                    } else if(param.type  == "PASSWORD") {
+                        choice = document.createElement("input");
+                        choice.type = "password";
+                        choice.name = param.name;
+                    } else {
+                        choice = document.createElement("input");
+                        choice.value = param.defaultValue;
+                        choice.name = param.name;
                     }
-                } else if(param.type === "LOOKUP_CHOICE" ||
-                          param.type === "STRING_OR_CHOICE" ||
-                          param.type === "CHOICE")
-                {
-                    choice = document.createElement("select");
-                    choice.name = param.name;
-                    var options = param.listOptions;
-                    for(var a = 0; a < options.length; a++) {
-                        var option = options[a];
-                        var optionItem = document.createElement("option");
-                        optionItem.innerHTML = option.caption;
-                        optionItem.value = option.value;
-                        choice.appendChild(optionItem);
-                    }
-                } else if(param.type  === "TEXT_EDIT") {
-                    choice = document.createElement("textarea");
-                    choice.name = param.name;
-                } else if(param.type  == "INTEGER") {
-                    choice = document.createElement("input");
-                    choice.type = "number";
-                    choice.name = param.name;
-                } else if(param.type  == "PASSWORD") {
-                    choice = document.createElement("input");
-                    choice.type = "password";
-                    choice.name = param.name;
-                } else {
-                    choice = document.createElement("input");
-                    choice.value = param.defaultValue;
-                    choice.name = param.name;
-                }
 
-                span.appendChild(choice);
-                form.appendChild(span);
+                    span.appendChild(choice);
+                    form.appendChild(span);
+                }
             }
         },
 
