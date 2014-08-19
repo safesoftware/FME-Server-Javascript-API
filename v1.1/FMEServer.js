@@ -300,11 +300,11 @@ var FMEServer = ( function() {
             callback = callback || null;
             var url;
             if (getConfig('server').indexOf('https://') != -1) {
-                url = getConfig('server').replace('https://','');
+                url = getConfig('server').replace('https://','wss://');
             } else {
-                url = getConfig('server').replace('http://','');
+                url = getConfig('server').replace('http://','ws://');
             }
-            var ws = new WebSocket('ws://' + url + ':7078/websocket');
+            var ws = new WebSocket(url + ':7078/websocket');
             ws.onopen = function() {
                 var openMsg = {
                     ws_op : 'open',
