@@ -107,14 +107,15 @@ var FMEServer = ( function() {
             atyp = atyp || getConfig('accept');
             
             if (url.indexOf('?') != -1) {
-                url += '&detail=' + getConfig('detail') + '&token=' + getConfig('token');
+                url += '&detail=' + getConfig('detail');
             } else {
-                url += '?detail=' + getConfig('detail') + '&token=' + getConfig('token');
+                url += '?detail=' + getConfig('detail');
             }
 
             if (getConfig('xdomain')) {
                 if (rtyp == 'GET') {
                     req = new XDomainRequest();
+                    url += '&token=' + getConfig('token');
                     req.open(rtyp, url);
                     req.onload = function() {
                         var resp;
@@ -134,6 +135,7 @@ var FMEServer = ( function() {
             } else {
                 req = new XMLHttpRequest();
                 req.open(rtyp, url, true);
+                req.setRequestHeader('Authorization', 'fmetoken token='+getConfig('token'));
 
                 if (atyp !== null) {
                     req.setRequestHeader('Accept', atyp);

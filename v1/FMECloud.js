@@ -134,7 +134,7 @@ var FMECloud = ( function() {
             rtyp = rtyp || 'GET';
             params = params || null;
             ctyp = ctyp || null;
-            atyp = atyp || 'json';
+            atyp = atyp || 'application/json';
 
             var req;
 
