@@ -83,7 +83,7 @@ var FMECloud = ( function() {
          */
         var config = { 
             version : 'v1',
-            server : 'https://api.fmecloud.com',
+            server : 'https://api.fmecloud.safe.com',
             token : token,
             xdomain : false
         };
