@@ -739,7 +739,7 @@ var FMEServer = ( function() {
         getSubscription : function(name, callback) {
             callback = callback || null;
             name = encodeURIComponent(name).replace(/%20/g, '+');
-            var url = buildURL('{{svr}}/fmerest/{{ver}}/notifications/subscription/' + name);
+            var url = buildURL('{{svr}}/fmerest/{{ver}}/notifications/subscriptions/' + name);
             ajax(url, callback);
         },
 
