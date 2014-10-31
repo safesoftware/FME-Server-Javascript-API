@@ -820,7 +820,7 @@ var FMEServer = ( function() {
         getNotificationTopic : function(name, callback) {
             callback = callback || null;
             name = encodeURIComponent(name);
-            var url = buildURL('{{svr}}/fmerest/{{ver}}/notifications/topics' + name);
+            var url = buildURL('{{svr}}/fmerest/{{ver}}/notifications/topics/' + name);
             ajax(url, callback);
         },
 
@@ -849,7 +849,7 @@ var FMEServer = ( function() {
             callback = callback || null;
             name = encodeURIComponent(name);
             description = encodeURIComponent(description).replace(/%20/g, '+');
-            var url = buildURL('{{svr}}/fmerest/{{ver}}/notifications/topics' + name);
+            var url = buildURL('{{svr}}/fmerest/{{ver}}/notifications/topics/' + name);
             var params = "description=" + description;
             ajax(url, callback, 'PUT', params, 'application/x-www-form-urlencoded');
         },
@@ -862,7 +862,7 @@ var FMEServer = ( function() {
         deleteTopic : function(name, callback) {
             callback = callback || null;
             name = encodeURIComponent(name);
-            var url = buildURL('{{svr}}/fmerest/{{ver}}/notifications/topics' + name);
+            var url = buildURL('{{svr}}/fmerest/{{ver}}/notifications/topics/' + name);
             ajax(url, callback, 'DELETE', null, 'application/x-www-form-urlencoded');
         },
 
