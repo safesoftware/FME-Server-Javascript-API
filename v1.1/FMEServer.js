@@ -516,7 +516,7 @@ var FMEServer = ( function() {
                         choice = document.createElement("input");
                         choice.type = "file";
                         choice.name = param.name;
-                    } else if(param.type === "LISTBOX") {
+                    } else if(param.type === "LISTBOX" || param.type === "LOOKUP_LISTBOX") {
                         choice = document.createElement("div");
                         var options = param.listOptions;
                         for(var a = 0; a < options.length; a++) {
@@ -531,7 +531,6 @@ var FMEServer = ( function() {
                             choice.appendChild(caption);
                         }
                     } else if(param.type === "LOOKUP_CHOICE" ||
-                              param.type === "LOOKUP_LISTBOX" ||
                               param.type === "STRING_OR_CHOICE" ||
                               param.type === "CHOICE")
                     {
