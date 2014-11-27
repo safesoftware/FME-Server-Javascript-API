@@ -335,6 +335,20 @@ var FMEServer = ( function() {
         },
 
         /**
+         * Runs a workspace using the Data Streaming service and returns the workspace output
+         * @param {String} repository - The repository on the FME Server
+         * @param {String} workspace - The name of the workspace on FME Server, i.e. workspace.fmw
+         * @param {String} params - Any workspace-specific parameter values
+         * @param {Function} callback - Callback function accepting the workspace return value
+         */
+        runDataStreaming : function(repository, workspace, params, callback){
+            callback = callback || null;
+            var url = buildURL('{{svr}}/fmedatastreaming/' + repository + '/' + workspace);
+            params = 'opt_showresult=true&' + params;
+            ajax(url, callback, 'POST', params, 'application/x-www-form-urlencoded');
+        },
+
+        /**
          * Upload file(s) using data upload legacy service
          * @param {String} repository - The repository on the FME Server
          * @param {String} workspace - The name of the workspace on FME Server, i.e. workspace.fmw
