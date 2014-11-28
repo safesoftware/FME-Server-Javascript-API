@@ -222,7 +222,7 @@ var FMEServer = ( function() {
             if (typeof server == 'object') {
                 getConfig().server = server.server;
                 getConfig().token = server.token;
-                getConfig().accept = server.format || 'json';
+                getConfig().accept = server.format || 'application/json';
                 getConfig().detail =  server.detail || 'high';
                 getConfig().port = server.port || '80';
                 getConfig().ssl = server.ssl || false;
@@ -230,7 +230,7 @@ var FMEServer = ( function() {
             } else {
                 getConfig().server = server;
                 getConfig().token = token;
-                getConfig().accept = format || 'json';
+                getConfig().accept = format || 'application/json';
                 getConfig().detail =  detail || 'high';
                 getConfig().port = port || '80';
                 getConfig().ssl = ssl || false;
