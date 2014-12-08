@@ -512,7 +512,7 @@ var FMEServer = ( function() {
                     label.innerHTML = param.description;
                     span.appendChild(label);
                     var choice;
-                    if(param.type === "FILE_OR_URL") {
+                    if(param.type === "FILE_OR_URL" || param.type === "FILENAME_MUSTEXIST" || param.type === "FILENAME") {
                         choice = document.createElement("input");
                         choice.type = "file";
                         choice.name = param.name;
