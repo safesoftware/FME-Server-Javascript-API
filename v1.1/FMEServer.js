@@ -222,7 +222,7 @@ var FMEServer = ( function() {
             if (typeof server == 'object') {
                 getConfig().server = server.server;
                 getConfig().token = server.token;
-                getConfig().accept = server.format || 'json';
+                getConfig().accept = server.format || 'application/json';
                 getConfig().detail =  server.detail || 'high';
                 getConfig().port = server.port || '80';
                 getConfig().ssl = server.ssl || false;
@@ -230,7 +230,7 @@ var FMEServer = ( function() {
             } else {
                 getConfig().server = server;
                 getConfig().token = token;
-                getConfig().accept = format || 'json';
+                getConfig().accept = format || 'application/json';
                 getConfig().detail =  detail || 'high';
                 getConfig().port = port || '80';
                 getConfig().ssl = ssl || false;
@@ -288,7 +288,7 @@ var FMEServer = ( function() {
         getSession : function(repository, workspace, callback){
             callback = callback || null;
             var url = buildURL('{{svr}}/fmedataupload/' + repository + '/' + workspace);
-            var params = 'opt_extractarchive=false&opt_pathlevel=3&opt_fullpath=true';
+            var params = 'opt_extractarchive=false&opt_pathlevel=3&opt_fullpath=true&token=' + getConfig().token;
             ajax(url, callback, 'POST', params, 'application/x-www-form-urlencoded');
         },
 
@@ -330,7 +330,7 @@ var FMEServer = ( function() {
         runDataDownload : function(repository, workspace, params, callback){
             callback = callback || null;
             var url = buildURL('{{svr}}/fmedatadownload/' + repository + '/' + workspace);
-            params = 'opt_responseformat=' + getConfig('accept') + '&opt_showresult=true&' + params;
+            params = 'opt_responseformat=' + getConfig('accept') + '&opt_showresult=true&token=' + getConfig().token + '&' + params;
             ajax(url, callback, 'POST', params, 'application/x-www-form-urlencoded');
         },
 
@@ -344,7 +344,7 @@ var FMEServer = ( function() {
         runDataStreaming : function(repository, workspace, params, callback){
             callback = callback || null;
             var url = buildURL('{{svr}}/fmedatastreaming/' + repository + '/' + workspace);
-            params = 'opt_showresult=true&' + params;
+            params = 'opt_showresult=true&token=' + getConfig().token + '&' + params;
             ajax(url, callback, 'POST', params, 'application/x-www-form-urlencoded');
         },
 
@@ -360,6 +360,7 @@ var FMEServer = ( function() {
             callback = callback || null;
             jsid = jsid || null;
             var url = buildURL('{{svr}}/fmedataupload/' + repository + '/' + workspace);
+            var token = getConfig().token();
             if(jsid !== null) {
                 url += ';jsessionid=' + jsid;
             }
@@ -377,7 +378,7 @@ var FMEServer = ( function() {
 
                 // Create the form with the proper settings and set the target to the iframe
                 var form = document.createElement('form');
-                form.action = url;
+                form.action = url + '?token=' + token;
                 form.method = 'POST';
                 form.enctype = 'multipart/form-data';
 
@@ -407,6 +408,7 @@ var FMEServer = ( function() {
                     params.append('files[]', files.files[i]);
                 }
 
+                params.append('token', token);
                 ajax(url, callback, 'POST', params);
             }
         },
@@ -442,7 +444,7 @@ var FMEServer = ( function() {
             for(var f in files){
                 params += path + '/' + files[f].name + '%22%20%22';
             }
-            params += '&' + extra + '&opt_responseformat=json';
+            params += '&' + extra + '&opt_responseformat=json&token=' + getConfig().token;
             ajax(url+params, callback);
         },
 
@@ -512,7 +514,7 @@ var FMEServer = ( function() {
                     label.innerHTML = param.description;
                     span.appendChild(label);
                     var choice;
-                    if(param.type === "FILE_OR_URL") {
+                    if(param.type === "FILE_OR_URL" || param.type === "FILENAME_MUSTEXIST" || param.type === "FILENAME") {
                         choice = document.createElement("input");
                         choice.type = "file";
                         choice.name = param.name;
