@@ -77,10 +77,26 @@ var FMEServer = ( function() {
     }
 
     /**
+     * Get Simple Response Type
+     * @return {String} - The extracted simple accept type from the config
+     */
+    function getResponseType() {
+        var type = getConfig('accept'),
+            accept = 'json';
+        if (type.indexOf('/') !== -1) {
+            type = type.split(/\//g);
+            if (type[1].length > 0) {
+                accept = type[1];
+            }
+        }
+        return accept;
+    }
+
+    /**
      * Check Config Status
      */
     function checkConfig() {
-        if(getConfig().server && getConfig().token){
+        if(getConfig('server') && getConfig('token')){
             return true;
         }
         throw new Error('You must initialize FMEServer using the FMEServer.init() method.');
@@ -288,7 +304,7 @@ var FMEServer = ( function() {
         getSession : function(repository, workspace, callback){
             callback = callback || null;
             var url = buildURL('{{svr}}/fmedataupload/' + repository + '/' + workspace);
-            var params = 'opt_extractarchive=false&opt_pathlevel=3&opt_fullpath=true&token=' + getConfig().token;
+            var params = 'opt_extractarchive=false&opt_pathlevel=3&opt_fullpath=true&token=' + getConfig('token');
             ajax(url, callback, 'POST', params, 'application/x-www-form-urlencoded');
         },
 
@@ -330,7 +346,10 @@ var FMEServer = ( function() {
         runDataDownload : function(repository, workspace, params, callback){
             callback = callback || null;
             var url = buildURL('{{svr}}/fmedatadownload/' + repository + '/' + workspace);
-            params = 'opt_responseformat=' + getConfig('accept') + '&opt_showresult=true&token=' + getConfig().token + '&' + params;
+            if (params && params.length > 0) {
+                params = '&' + params;
+            }
+            params = 'opt_responseformat=' + getResponseType() + '&opt_showresult=true&token=' + getConfig('token') + params;
             ajax(url, callback, 'POST', params, 'application/x-www-form-urlencoded');
         },
 
@@ -344,7 +363,7 @@ var FMEServer = ( function() {
         runDataStreaming : function(repository, workspace, params, callback){
             callback = callback || null;
             var url = buildURL('{{svr}}/fmedatastreaming/' + repository + '/' + workspace);
-            params = 'opt_showresult=true&token=' + getConfig().token + '&' + params;
+            params = 'opt_showresult=true&token=' + getConfig('token') + '&' + params;
             ajax(url, callback, 'POST', params, 'application/x-www-form-urlencoded');
         },
 
@@ -360,7 +379,7 @@ var FMEServer = ( function() {
             callback = callback || null;
             jsid = jsid || null;
             var url = buildURL('{{svr}}/fmedataupload/' + repository + '/' + workspace);
-            var token = getConfig().token();
+            var token = getConfig('token');
             if(jsid !== null) {
                 url += ';jsessionid=' + jsid;
             }
@@ -444,7 +463,7 @@ var FMEServer = ( function() {
             for(var f in files){
                 params += path + '/' + files[f].name + '%22%20%22';
             }
-            params += '&' + extra + '&opt_responseformat=json&token=' + getConfig().token;
+            params += '&' + extra + '&opt_responseformat=' + getResponseType() + '&token=' + getConfig('token');
             ajax(url+params, callback);
         },
 
