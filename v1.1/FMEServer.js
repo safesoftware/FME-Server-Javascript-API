@@ -448,11 +448,13 @@ var FMEServer = ( function() {
         
         /**
          * Runs a workspace with user uploaded session data
+         * @param {String} repository - The repository on the FME Server
+         * @param {String} workspace - The name of the workspace on FME Server, i.e. workspace.fmw
          * @param {String} path - The server path for the session
          * @param {Object} params - The parameter object for running the workspace
          * @param {Function} callback - Callback function accepting the json return value
          */
-        runWorkspaceWithData : function(path, params, callback) {
+        runWorkspaceWithData : function(repository, workspace, path, params, callback) {
             callback = callback || null;
             path = path || null;
             var service = params.service || 'fmedatadownload';
