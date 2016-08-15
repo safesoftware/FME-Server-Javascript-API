@@ -350,7 +350,7 @@ var FMEServer = ( function() {
                 params = '&' + params;
             }
             params = 'opt_responseformat=' + getResponseType() + '&opt_showresult=true&token=' + getConfig('token') + params;
-            ajax(url, callback, 'POST', params, 'application/x-www-form-urlencoded');
+            ajax(url, callback, 'POST', params, 'application/x-www-form-urlencoded;charset=utf-8');
         },
 
         /**
@@ -364,7 +364,7 @@ var FMEServer = ( function() {
             callback = callback || null;
             var url = buildURL('{{svr}}/fmedatastreaming/' + repository + '/' + workspace);
             params = 'opt_showresult=true&token=' + getConfig('token') + '&' + params;
-            ajax(url, callback, 'POST', params, 'application/x-www-form-urlencoded');
+            ajax(url, callback, 'POST', params, 'application/x-www-form-urlencoded;charset=utf-8');
         },
 
         /**
