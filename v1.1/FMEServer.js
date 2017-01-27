@@ -427,7 +427,7 @@ var FMEServer = ( function() {
                     params.append('files[]', files.files[i]);
                 }
 
-                params.append('token', token);
+                url = url + '?token=' + token;
                 ajax(url, callback, 'POST', params);
             }
         },
