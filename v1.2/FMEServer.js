@@ -387,6 +387,7 @@ var FMEServer = ( function() {
             var token = getConfig('token');
             if(jsid !== null) {
                 url += '?opt_namespace=' + jsid;
+                url += '&opt_fullpath=true';
                 url += '&token=' + token
             } else {
                 url += '?token=' + token
@@ -453,6 +454,7 @@ var FMEServer = ( function() {
             var url = buildURL('{{svr}}/fmedataupload/' + repository + '/' + workspace);
             if (jsid !== null){
                 url += '?opt_namespace=' + jsid;
+                url += '&opt_fullpath=true';
             }
             ajax(url, callback);
         },
