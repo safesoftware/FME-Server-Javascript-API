@@ -563,6 +563,9 @@ var FMEServer = ( function() {
                             var caption = document.createElement("label");
                             caption.innerHTML = option.caption;
                             choice.appendChild(caption);
+														if (checkbox.value == param.defaultValue) {
+															checkbox.checked = true;
+														}
                         }
                     } else if(param.type === "LOOKUP_CHOICE" ||
                               param.type === "STRING_OR_CHOICE" ||
@@ -577,14 +580,19 @@ var FMEServer = ( function() {
                             optionItem.innerHTML = option.caption;
                             optionItem.value = option.value;
                             choice.appendChild(optionItem);
+														if (optionItem.value == param.defaultValue) {
+															optionItem.selected = true;
+														}
                         }
                     } else if(param.type  === "TEXT_EDIT") {
                         choice = document.createElement("textarea");
                         choice.name = param.name;
+												choice.value = param.defaultValue;
                     } else if(param.type  == "INTEGER") {
                         choice = document.createElement("input");
                         choice.type = "number";
                         choice.name = param.name;
+												choice.value = param.defaultValue;
                     } else if(param.type  == "PASSWORD") {
                         choice = document.createElement("input");
                         choice.type = "password";
