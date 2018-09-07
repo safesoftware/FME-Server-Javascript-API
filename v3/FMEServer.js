@@ -347,9 +347,9 @@ var FMEServer = ( function() {
 
         /**
          * Runs a workspace using the Data Download service and returns json
-         * @param {String} repository - The repository on the FME Server
+         * @param {String} repository - The repository on FME Server
          * @param {String} workspace - The name of the workspace on FME Server, i.e. workspace.fmw
-         * @param {String} params - Any workspace-specific parameter values
+         * @param {String} params - Any workspace-specific parameter values as a URL encoded string i.e. param1=value1&param2=value2
          * @param {Function} callback - Callback function accepting the json return value
          */
         runDataDownload : function(repository, workspace, params, callback){
@@ -364,9 +364,9 @@ var FMEServer = ( function() {
 
         /**
          * Runs a workspace using the Data Streaming service and returns the workspace output
-         * @param {String} repository - The repository on the FME Server
+         * @param {String} repository - The repository on FME Server
          * @param {String} workspace - The name of the workspace on FME Server, i.e. workspace.fmw
-         * @param {String} params - Any workspace-specific parameter values
+         * @param {String} params - Any workspace-specific parameter values as a URL encoded string i.e. param1=value1&param2=value2
          * @param {Function} callback - Callback function accepting the workspace return value
          */
         runDataStreaming : function(repository, workspace, params, callback){
@@ -378,7 +378,7 @@ var FMEServer = ( function() {
 
         /**
          * Upload file(s) using data upload service
-         * @param {String} repository - The repository on the FME Server
+         * @param {String} repository - The repository on FME Server
          * @param {String} workspace - The name of the workspace on FME Server, i.e. workspace.fmw
          * @param {Object} files - The form file object
          * @param {String} jsid - The current session id
@@ -447,7 +447,7 @@ var FMEServer = ( function() {
 
         /**
          * Get data upload files for the session
-         * @param {String} repository - The repository on the FME Server
+         * @param {String} repository - The repository on FME Server
          * @param {String} workspace - The name of the workspace on FME Server, i.e. workspace.fmw
          * @param {String} jsid - The current session id
          * @param {Function} callback - Callback function accepting the json return value
@@ -465,8 +465,23 @@ var FMEServer = ( function() {
 
         /**
          * Runs a workspace with user uploaded session data
-         * @param {String} path - The server path for the session
-         * @param {Object} params - The parameter object for running the workspace
+         * @param {String} repository - The repository on FME Server
+         * @param {String} workspace - The name of the workspace on FME Server, i.e. workspace.fmw
+         * @param {Object} params - The parameter object for running the workspace structured as json
+         *  It should contain the following attributes:
+				filename -> name of the source dataset parameter - it assumes there's only one
+				files -> a list of file paths to point the source dataset at
+						defined like: files = [{path : "mypath\filename.txt"}, {path : "mysecondpath\filename.txt"}]
+						can come directly from the response from uploadFile or getDataUploads 
+                service -> the service with which to run the workspace (datadownload, jobsubmitter, etc)
+                params -> (optional) extra parameters to set in the workspace (set as "PARAMETERNAME=VALUE&OTHERPARAM=OTHERVALUE")
+            i.e. it can be defined as: 
+                var params = {
+                    filename : 'SourceDataset_GENERIC',
+                    files : uploadedFiles,
+                    service : 'fmejobsubmitter',
+                    params : "DestinationFormat=OGCKML"
+                }
          * @param {Function} callback - Callback function accepting the json return value
          */
         runWorkspaceWithData : function(repository, workspace, params, callback) {
@@ -485,7 +500,7 @@ var FMEServer = ( function() {
         },
 
         /**
-         * Retrieves all available repositories on the FME Server
+         * Retrieves all available Repositories on the FME Server
          * @param {Function} callback - Callback function accepting the json return value
          */
         getRepositories : function(callback) {
@@ -496,7 +511,7 @@ var FMEServer = ( function() {
 
         /**
          * Retrieves all items on the FME Server for a given Repository
-         * @param {String} repository - The repository on the FME Server
+         * @param {String} repository - The repository on FME Server
          * @param {String} type - The specific type of file item requested (optional)
          * @param {Function} callback - Callback function accepting the json return value
          */
@@ -508,8 +523,8 @@ var FMEServer = ( function() {
         },
 
         /**
-         * Retrieves all published params for a given workspace
-         * @param {String} repository - The repository on the FME Server
+         * Retrieves all published parameters for a given workspace
+         * @param {String} repository - The repository on FME Server
          * @param {String} workspace - The name of the workspace on FME Server, i.e. workspace.fmw
          * @param {Function} callback - Callback function accepting the json return value
          */
@@ -520,8 +535,8 @@ var FMEServer = ( function() {
         },
 
         /**
-         * Retrieves a single published param for a given workspace
-         * @param {String} repository - The repository on the FME Server
+         * Retrieves a single published parameter for a given workspace
+         * @param {String} repository - The repository the FME Server
          * @param {String} workspace - The name of the workspace on FME Server, i.e. workspace.fmw
          * @param {String} parameter - The name of the workspace parameter
          * @param {Function} callback - Callback function accepting the json return value
@@ -534,8 +549,8 @@ var FMEServer = ( function() {
 
         /**
          * Generates a standard workspace parameters form
-         * @param {String} id - The container id to place the form elements
-         * @param {Object} json - The json object representing the form parameters
+         * @param {String} id - The container id in which to place the form elements
+         * @param {Object} json - The json object representing the form parameters (can come directly from getWorkspaceParameters)
          * @param {Array} items - (Optional) The array of parameter names you wish to expose, by default all parameters are exposed
          */
         generateFormItems : function(id, json, items) {
@@ -792,7 +807,7 @@ var FMEServer = ( function() {
 
         /**
          * Update a subscription
-         * @param {String} name - subscription name
+         * @param {String} name - Subscription name
          * @param {Object} subscription - Object holding the subscription information
          * @param {Function} callback - Callback function accepting the json return value
          */
@@ -807,7 +822,7 @@ var FMEServer = ( function() {
 
         /**
          * Delete a subscription
-         * @param {String} name - subscription name
+         * @param {String} name - Subscription name
          * @param {Function} callback - Callback function accepting the json return value
          */
         deleteSubscription : function(name, callback) {
@@ -892,7 +907,7 @@ var FMEServer = ( function() {
 
         /**
          * Delete Topic
-         * @param {String} name topic name
+         * @param {String} name Topic name
          * @param {Function} callback - Callback function accepting the json return value
          */
         deleteTopic : function(name, callback) {
@@ -903,9 +918,9 @@ var FMEServer = ( function() {
         },
 
         /**
-         * Publish JSON or XML to a topic
+         * Publish JSON to a topic
          * @param {String} name - Topic name
-         * @param {String} message - The data as a json string or xml string
+         * @param {String} message - The data as a json string
          * @param {Function} callback - Callback function accepting the json return value
          */
         publishToTopicStructured : function(name, message, callback) {
@@ -963,7 +978,12 @@ var FMEServer = ( function() {
          * Submit a Job to Run asynchronously
          * @param {String} repository - The repository on the FME Server
          * @param {String} workspace - The name of the workspace on FME Server, i.e. workspace.fmw
-         * @param {String} params - Any workspace-specific parameter values
+         * @param {String} params - Any workspace-specific parameter values as json
+         *  i.e. can be defined like: 
+         *  var parameters = {'publishedParameters' : [
+								{'name': 'MAXY', 'value':'42'},
+                                {'name':'THEMES','value':['airports', 'cenart']}]
+                            }
          * @param {Function} callback - Callback function accepting the json return value
          */
         submitJob : function(repository, workspace, params, callback) {
@@ -977,7 +997,12 @@ var FMEServer = ( function() {
          * Submit a Job to Run Synchronously
          * @param {String} repository - The repository on the FME Server
          * @param {String} workspace - The name of the workspace on FME Server, i.e. workspace.fmw
-         * @param {String} params - Any workspace-specific parameter values
+         * @param {String} params - Any workspace-specific parameter values as json
+         * i.e. can be defined like: 
+         *  var parameters = {'publishedParameters' : [
+								{'name': 'MAXY', 'value':'42'},
+                                {'name':'THEMES','value':['airports', 'cenart']}]
+                            }
          * @param {Function} callback - Callback function accepting the json return value
          */
         submitSyncJob : function(repository, workspace, params, callback) {
@@ -1011,7 +1036,7 @@ var FMEServer = ( function() {
         /**
          * Get the metadata for a directory or regular file inside a Resource Connection
          * @param {String} resource - The resource name
-         * @param {String} path - The folder or file path within the resource on the server
+         * @param {String} path - The folder or file path within the resource on FME Server
          * @param {String} depth - The number of directory levels deep from which to retrieve metadata
          * @param {Function} callback - Callback function accepting the json return value
          */
