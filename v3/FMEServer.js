@@ -472,10 +472,10 @@ var FMEServer = ( function() {
 				filename -> name of the source dataset parameter - it assumes there's only one
 				files -> a list of file paths to point the source dataset at
 						defined like: files = [{path : "mypath\filename.txt"}, {path : "mysecondpath\filename.txt"}]
-						can come directly from the response from uploadFile or getDataUploads 
+						can come directly from the response from uploadFile or getDataUploads
                 service -> the service with which to run the workspace (datadownload, jobsubmitter, etc)
                 params -> (optional) extra parameters to set in the workspace (set as "PARAMETERNAME=VALUE&OTHERPARAM=OTHERVALUE")
-            i.e. it can be defined as: 
+            i.e. it can be defined as:
                 var params = {
                     filename : 'SourceDataset_GENERIC',
                     files : uploadedFiles,
@@ -515,7 +515,7 @@ var FMEServer = ( function() {
          * @param {String} type - The specific type of file item requested (optional)
          * @param {Function} callback - Callback function accepting the json return value
          */
-        getRepositoryItems : function(repository, type, callback) {
+        getRepositoryItems : function(repository, callback, type) {
             type = type || '';
             callback = callback || null;
             var url = buildURL('{{svr}}/fmerest/{{ver}}/repositories/' + repository + '/items?type=' + type);
@@ -541,7 +541,7 @@ var FMEServer = ( function() {
          * @param {String} parameter - The name of the workspace parameter
          * @param {Function} callback - Callback function accepting the json return value
          */
-        getWorkspaceParameter : function(repository, workspace, parameter, callback) {
+        queryWorkspaceParameter : function(repository, workspace, parameter, callback) {
             callback = callback || null;
             var url = buildURL('{{svr}}/fmerest/{{ver}}/repositories/' + repository + '/items/' + workspace + '/parameters/' + parameter);
             ajax(url, callback);
@@ -680,7 +680,7 @@ var FMEServer = ( function() {
 
         /**
          * Create a scheduled item
-         * @param {Object} schedule - Object holding the schedule information
+         * @param {Object} schedule - Json object holding the schedule information
          * @param {Function} callback - Callback function accepting the json return value
          */
         createScheduleItem : function(schedule, callback) {
@@ -954,6 +954,8 @@ var FMEServer = ( function() {
 
         /**
          * Lookup user token
+         * @param {String} user - The username for the required level of access
+         * @param {String} password - The password that belongs to that user
          * @param {Function} callback - Callback function accepting the json return value
          */
         lookupToken : function(user, password, callback) {
@@ -965,6 +967,10 @@ var FMEServer = ( function() {
 
         /**
          * Generate guest token
+         * @param {String} user - The username for the required level of access
+         * @param {String} password - The password that belongs to that user
+         * @param {Integer} count - The number of seconds, minutes, hours, or days for the token to last
+         * @param {String} unit - Unit of time for the token to last (can be second, minute, hour, or day)
          * @param {Function} callback - Callback function accepting the json return value
          */
         generateToken : function(user, password, count, unit, callback) {
@@ -979,7 +985,7 @@ var FMEServer = ( function() {
          * @param {String} repository - The repository on the FME Server
          * @param {String} workspace - The name of the workspace on FME Server, i.e. workspace.fmw
          * @param {String} params - Any workspace-specific parameter values as json
-         *  i.e. can be defined like: 
+         *  i.e. can be defined like:
          *  var parameters = {'publishedParameters' : [
 								{'name': 'MAXY', 'value':'42'},
                                 {'name':'THEMES','value':['airports', 'cenart']}]
@@ -998,7 +1004,7 @@ var FMEServer = ( function() {
          * @param {String} repository - The repository on the FME Server
          * @param {String} workspace - The name of the workspace on FME Server, i.e. workspace.fmw
          * @param {String} params - Any workspace-specific parameter values as json
-         * i.e. can be defined like: 
+         * i.e. can be defined like:
          *  var parameters = {'publishedParameters' : [
 								{'name': 'MAXY', 'value':'42'},
                                 {'name':'THEMES','value':['airports', 'cenart']}]
