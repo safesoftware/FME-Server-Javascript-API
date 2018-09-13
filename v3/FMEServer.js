@@ -4,8 +4,8 @@
  * support@safe.com
  *
  * Unofficial JavaScript Library for FME Server >= 2014. This is not intended to
- * be a complete API like the C++, C# and Java APIs, but rather a collection
- * of boilerplate methods for REST API calls typically needed in a web page
+ * be a complete API, but rather a collection of boilerplate methods
+ * for REST API calls typically needed in a web page
  * interfacing with FME Server.
  *
  * The MIT License (MIT)
